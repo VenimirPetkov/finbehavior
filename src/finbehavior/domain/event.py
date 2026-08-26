@@ -3,7 +3,8 @@ from datetime import datetime
 
 from finbehavior.domain.types import FieldValue
 from .enums import EventSource
-    
+
+
 @dataclass
 class Event:
     created: datetime

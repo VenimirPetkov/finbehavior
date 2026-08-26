@@ -25,6 +25,7 @@ def test_create_transaction_event():
     assert event.fields["amount"] == 42.50
     assert event.fields["direction"] == "out"
 
+
 def test_create_trading_event_with_different_fields():
     event = Event(
         created=datetime(2026, 8, 26, 15, 0),

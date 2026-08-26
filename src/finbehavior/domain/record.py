@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime
+
 from .event import Event
 from .profile import ProfileState
+
 
 @dataclass
 class UserRecord:

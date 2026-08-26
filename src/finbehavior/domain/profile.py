@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 
-ProfileValue = str | int | float | bool
+from .types import ScalarValue
+
 
 @dataclass
 class ProfileState:
-    fields: dict[str, ProfileValue]
+    fields: dict[str, ScalarValue]
