@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import pytest
+
 from finbehavior.domain.enums import EventSource
 from finbehavior.domain.event import Event
 from finbehavior.domain.profile import ProfileState
@@ -35,3 +37,24 @@ def test_create_user_record():
     assert record.profile == profile
     assert record.events == [event]
     assert record.evaluation_point == datetime(2026, 8, 26, 12, 0)
+
+
+def test_user_record_rejects_future_event():
+    profile = ProfileState(fields={})
+
+    future_event = Event(
+        created=datetime(2026, 8, 27, 10, 0),
+        source=EventSource.TRANSACTION,
+        fields={
+            "type": "card_payment",
+            "amount": 20.0,
+        },
+    )
+
+    with pytest.raises(ValueError):
+        UserRecord(
+            user_id=42,
+            evaluation_point=datetime(2026, 8, 26, 12, 0),
+            profile=profile,
+            events=[future_event],
+        )

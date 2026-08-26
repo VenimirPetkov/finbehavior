@@ -11,3 +11,8 @@ class UserRecord:
     evaluation_point: datetime
     profile: ProfileState
     events: list[Event]
+
+    def __post_init__(self):
+        for event in self.events:
+            if event.created > self.evaluation_point:
+                raise ValueError("Event cannot occur after the evaluation point")
