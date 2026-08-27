@@ -11,6 +11,35 @@ from finbehavior.data.reference.merchant_categories import (
     TRAVEL_MERCHANT_CATEGORIES,
 )
 from finbehavior.data.reference.regions import REGIONS
+from finbehavior.data.reference.transaction import (
+    TRANSACTION_DIRECTION_OUT,
+    TRANSACTION_DIRECTIONS,
+    TRANSACTION_TYPE_CARD_PAYMENT,
+    TRANSACTION_TYPE_CASH_WITHDRAWAL,
+    TRANSACTION_TYPE_FX_EXCHANGE,
+    TRANSACTION_TYPE_TRANSFER,
+    TRANSACTION_TYPES,
+)
+from finbehavior.data.reference.transaction_generation import (
+    AMOUNT_DECIMAL_PLACES,
+    BEHAVIOR_SCALE_BASE,
+    CARD_PAYMENT_BASE_WEIGHT,
+    CARD_PAYMENT_MAX_AMOUNT,
+    CARD_PAYMENT_MIN_AMOUNT,
+    CARD_PAYMENT_SPENDING_WEIGHT_MULTIPLIER,
+    CASH_WITHDRAWAL_MAX_AMOUNT,
+    CASH_WITHDRAWAL_MIN_AMOUNT,
+    CASH_WITHDRAWAL_WEIGHT,
+    FOREIGN_PAYMENT_TRAVEL_PROBABILITY_MULTIPLIER,
+    FX_EXCHANGE_BASE_WEIGHT,
+    FX_EXCHANGE_MAX_AMOUNT,
+    FX_EXCHANGE_MIN_AMOUNT,
+    FX_EXCHANGE_TRAVEL_WEIGHT_MULTIPLIER,
+    TRANSFER_MAX_AMOUNT,
+    TRANSFER_MIN_AMOUNT,
+    TRANSFER_WEIGHT,
+    TRAVEL_CATEGORY_PROBABILITY_MULTIPLIER,
+)
 from finbehavior.domain.enums import EventSource
 from finbehavior.domain.event import Event
 
@@ -19,7 +48,11 @@ def _choose_foreign_region(
     home_region: str,
     rng: random.Random,
 ) -> str:
-    foreign_regions = tuple(region for region in REGIONS if region != home_region)
+    foreign_regions = tuple(
+        region
+        for region in REGIONS
+        if region != home_region
+    )
 
     return rng.choice(foreign_regions)
 
@@ -29,7 +62,9 @@ def _choose_foreign_currency(
     rng: random.Random,
 ) -> str:
     foreign_currencies = tuple(
-        currency for currency in SUPPORTED_CURRENCIES if currency != home_currency
+        currency
+        for currency in SUPPORTED_CURRENCIES
+        if currency != home_currency
     )
 
     return rng.choice(foreign_currencies)
@@ -43,38 +78,61 @@ def generate_card_payment(
 ) -> Event:
     home_currency = BASE_CURRENCY_BY_REGION[home_region]
 
-    foreign_payment_probability = behavior.travel_tendency * 0.35
+    foreign_payment_probability = (
+        behavior.travel_tendency
+        * FOREIGN_PAYMENT_TRAVEL_PROBABILITY_MULTIPLIER
+    )
 
-    is_foreign = rng.random() < foreign_payment_probability
+    is_foreign = (
+        rng.random()
+        < foreign_payment_probability
+    )
 
     if is_foreign:
         merchant_region = _choose_foreign_region(
             home_region,
             rng,
         )
-        currency = BASE_CURRENCY_BY_REGION[merchant_region]
+
+        currency = BASE_CURRENCY_BY_REGION[
+            merchant_region
+        ]
     else:
         merchant_region = home_region
         currency = home_currency
 
-    travel_category_probability = behavior.travel_tendency * 0.40
+    travel_category_probability = (
+        behavior.travel_tendency
+        * TRAVEL_CATEGORY_PROBABILITY_MULTIPLIER
+    )
 
     if rng.random() < travel_category_probability:
-        merchant_category = rng.choice(TRAVEL_MERCHANT_CATEGORIES)
+        merchant_category = rng.choice(
+            TRAVEL_MERCHANT_CATEGORIES
+        )
     else:
-        merchant_category = rng.choice(COMMON_MERCHANT_CATEGORIES)
+        merchant_category = rng.choice(
+            COMMON_MERCHANT_CATEGORIES
+        )
 
     amount = round(
-        rng.uniform(5.0, 120.0) * (0.5 + behavior.spending_tendency),
-        2,
+        rng.uniform(
+            CARD_PAYMENT_MIN_AMOUNT,
+            CARD_PAYMENT_MAX_AMOUNT,
+        )
+        * (
+            BEHAVIOR_SCALE_BASE
+            + behavior.spending_tendency
+        ),
+        AMOUNT_DECIMAL_PLACES,
     )
 
     return Event(
         created=created,
         source=EventSource.TRANSACTION,
         fields={
-            "type": "card_payment",
-            "direction": "out",
+            "type": TRANSACTION_TYPE_CARD_PAYMENT,
+            "direction": TRANSACTION_DIRECTION_OUT,
             "amount": amount,
             "currency": currency,
             "merchant_category": merchant_category,
@@ -91,18 +149,27 @@ def generate_transfer(
 ) -> Event:
     currency = BASE_CURRENCY_BY_REGION[home_region]
 
-    direction = rng.choice(("in", "out"))
+    direction = rng.choice(
+        TRANSACTION_DIRECTIONS
+    )
 
     amount = round(
-        rng.uniform(20.0, 800.0) * (0.5 + behavior.income_level),
-        2,
+        rng.uniform(
+            TRANSFER_MIN_AMOUNT,
+            TRANSFER_MAX_AMOUNT,
+        )
+        * (
+            BEHAVIOR_SCALE_BASE
+            + behavior.income_level
+        ),
+        AMOUNT_DECIMAL_PLACES,
     )
 
     return Event(
         created=created,
         source=EventSource.TRANSACTION,
         fields={
-            "type": "transfer",
+            "type": TRANSACTION_TYPE_TRANSFER,
             "direction": direction,
             "amount": amount,
             "currency": currency,
@@ -119,16 +186,23 @@ def generate_cash_withdrawal(
     currency = BASE_CURRENCY_BY_REGION[home_region]
 
     amount = round(
-        rng.uniform(20.0, 300.0) * (0.5 + behavior.spending_tendency),
-        2,
+        rng.uniform(
+            CASH_WITHDRAWAL_MIN_AMOUNT,
+            CASH_WITHDRAWAL_MAX_AMOUNT,
+        )
+        * (
+            BEHAVIOR_SCALE_BASE
+            + behavior.spending_tendency
+        ),
+        AMOUNT_DECIMAL_PLACES,
     )
 
     return Event(
         created=created,
         source=EventSource.TRANSACTION,
         fields={
-            "type": "cash_withdrawal",
-            "direction": "out",
+            "type": TRANSACTION_TYPE_CASH_WITHDRAWAL,
+            "direction": TRANSACTION_DIRECTION_OUT,
             "amount": amount,
             "currency": currency,
             "atm_region": home_region,
@@ -142,7 +216,9 @@ def generate_fx_exchange(
     home_region: str,
     rng: random.Random,
 ) -> Event:
-    from_currency = BASE_CURRENCY_BY_REGION[home_region]
+    from_currency = BASE_CURRENCY_BY_REGION[
+        home_region
+    ]
 
     to_currency = _choose_foreign_currency(
         from_currency,
@@ -150,15 +226,22 @@ def generate_fx_exchange(
     )
 
     amount = round(
-        rng.uniform(50.0, 1500.0) * (0.5 + behavior.income_level),
-        2,
+        rng.uniform(
+            FX_EXCHANGE_MIN_AMOUNT,
+            FX_EXCHANGE_MAX_AMOUNT,
+        )
+        * (
+            BEHAVIOR_SCALE_BASE
+            + behavior.income_level
+        ),
+        AMOUNT_DECIMAL_PLACES,
     )
 
     return Event(
         created=created,
         source=EventSource.TRANSACTION,
         fields={
-            "type": "fx_exchange",
+            "type": TRANSACTION_TYPE_FX_EXCHANGE,
             "from_currency": from_currency,
             "to_currency": to_currency,
             "amount": amount,
@@ -176,22 +259,28 @@ def generate_transaction_event(
         rng = random.Random()
 
     transaction_type = rng.choices(
-        population=(
-            "card_payment",
-            "transfer",
-            "cash_withdrawal",
-            "fx_exchange",
-        ),
+        population=TRANSACTION_TYPES,
         weights=(
-            5.0 + behavior.spending_tendency * 3.0,
-            2.0,
-            1.0,
-            0.5 + behavior.travel_tendency * 3.0,
+            (
+                CARD_PAYMENT_BASE_WEIGHT
+                + behavior.spending_tendency
+                * CARD_PAYMENT_SPENDING_WEIGHT_MULTIPLIER
+            ),
+            TRANSFER_WEIGHT,
+            CASH_WITHDRAWAL_WEIGHT,
+            (
+                FX_EXCHANGE_BASE_WEIGHT
+                + behavior.travel_tendency
+                * FX_EXCHANGE_TRAVEL_WEIGHT_MULTIPLIER
+            ),
         ),
         k=1,
     )[0]
 
-    if transaction_type == "card_payment":
+    if (
+        transaction_type
+        == TRANSACTION_TYPE_CARD_PAYMENT
+    ):
         return generate_card_payment(
             behavior,
             created,
@@ -199,7 +288,10 @@ def generate_transaction_event(
             rng,
         )
 
-    if transaction_type == "transfer":
+    if (
+        transaction_type
+        == TRANSACTION_TYPE_TRANSFER
+    ):
         return generate_transfer(
             behavior,
             created,
@@ -207,7 +299,10 @@ def generate_transaction_event(
             rng,
         )
 
-    if transaction_type == "cash_withdrawal":
+    if (
+        transaction_type
+        == TRANSACTION_TYPE_CASH_WITHDRAWAL
+    ):
         return generate_cash_withdrawal(
             behavior,
             created,

@@ -1,10 +1,11 @@
+from finbehavior.data.reference.field_keys import CURRENCY_FIELD
 from finbehavior.tokenization.special_tokens import (
     EVT_TOKEN,
     MASK_TOKEN,
     UNK_TOKEN,
     USR_TOKEN,
 )
-from finbehavior.tokenization.vocabulary import Vocabulary
+from finbehavior.tokenization.vocabulary import Vocabulary, build_vocabulary
 
 
 def test_vocabulary_contains_special_tokens():
@@ -34,3 +35,13 @@ def test_adding_same_token_twice_reuses_id():
 
     assert first_id == second_id
     assert len(vocab) == 5
+    
+def test_build_vocabulary_contains_keys_and_values():
+    vocab = build_vocabulary()
+
+    currency_key_id = vocab.get_id(CURRENCY_FIELD)
+    eur_value_id = vocab.get_id("EUR")
+
+    assert currency_key_id != eur_value_id
+    assert vocab.get_token(currency_key_id) == CURRENCY_FIELD
+    assert vocab.get_token(eur_value_id) == "EUR"

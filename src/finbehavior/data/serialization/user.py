@@ -19,13 +19,8 @@ def synthetic_user_to_dict(
         "behavior": asdict(user.behavior),
         "record": {
             "user_id": user.record.user_id,
-            "evaluation_point": (
-                user.record.evaluation_point.isoformat()
-            ),
+            "evaluation_point": (user.record.evaluation_point.isoformat()),
             "profile": user.record.profile.fields,
-            "events": [
-                event_to_dict(event)
-                for event in user.record.events
-            ],
+            "events": [event_to_dict(event) for event in user.record.events],
         },
     }

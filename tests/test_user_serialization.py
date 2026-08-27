@@ -64,10 +64,7 @@ def test_synthetic_user_to_dict():
 
     assert data["record"]["user_id"] == 42
 
-    assert (
-        data["record"]["evaluation_point"]
-        == "2026-07-01T00:00:00"
-    )
+    assert data["record"]["evaluation_point"] == "2026-07-01T00:00:00"
 
     assert data["record"]["profile"] == {
         "plan": "premium",

@@ -1,3 +1,10 @@
+from finbehavior.tokenization.categorical import (
+    get_categorical_tokens,
+)
+from finbehavior.tokenization.keys import (
+    get_key_tokens,
+)
+
 from .special_tokens import SPECIAL_TOKENS
 
 
@@ -28,3 +35,15 @@ class Vocabulary:
 
     def __len__(self) -> int:
         return len(self._id_to_token)
+
+
+def build_vocabulary() -> Vocabulary:
+    vocab = Vocabulary()
+
+    for token in get_key_tokens():
+        vocab.add(token)
+
+    for token in get_categorical_tokens():
+        vocab.add(token)
+
+    return vocab
