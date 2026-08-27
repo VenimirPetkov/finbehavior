@@ -8,5 +8,14 @@ version = "0.1.0"
 description = "A self-supervised Transformer for learning behavioral representations from synthetic financial event sequences."
 requires-python = ">=3.11"
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "--basetemp=.pytest-tmp"
+testpaths = ["tests"]

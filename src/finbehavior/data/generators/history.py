@@ -37,13 +37,9 @@ def calculate_daily_event_rates(
             TRANSACTION_BASE_RATE
             + behavior.spending_tendency * TRANSACTION_SPENDING_RATE
         ),
-        EventSource.APP: (
-            APP_BASE_RATE
-            + behavior.app_activity * APP_ACTIVITY_RATE
-        ),
+        EventSource.APP: (APP_BASE_RATE + behavior.app_activity * APP_ACTIVITY_RATE),
         EventSource.TRADING: (
-            TRADING_BASE_RATE
-            + behavior.investing_tendency * TRADING_ACTIVITY_RATE
+            TRADING_BASE_RATE + behavior.investing_tendency * TRADING_ACTIVITY_RATE
         ),
         EventSource.COMMUNICATION: COMMUNICATION_BASE_RATE,
     }
