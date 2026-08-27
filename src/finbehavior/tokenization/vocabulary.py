@@ -5,7 +5,7 @@ from finbehavior.tokenization.keys import (
     get_key_tokens,
 )
 
-from .special_tokens import SPECIAL_TOKENS
+from .special_tokens import SPECIAL_TOKENS, UNK_TOKEN
 
 
 class Vocabulary:
@@ -29,6 +29,12 @@ class Vocabulary:
 
     def get_id(self, token: str) -> int:
         return self._token_to_id[token]
+
+    def encode(self, token: str) -> int:
+        return self._token_to_id.get(
+            token,
+            self._token_to_id[UNK_TOKEN],
+        )
 
     def get_token(self, token_id: int) -> str:
         return self._id_to_token[token_id]

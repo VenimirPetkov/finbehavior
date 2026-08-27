@@ -14,6 +14,7 @@ from finbehavior.data.reference.merchant_categories import (
     COMMON_MERCHANT_CATEGORIES,
     TRAVEL_MERCHANT_CATEGORIES,
 )
+from finbehavior.data.reference.profile import PLAN_VALUES
 from finbehavior.data.reference.regions import REGIONS
 from finbehavior.data.reference.trading import (
     TRADING_ACTIONS,
@@ -51,4 +52,5 @@ def get_categorical_tokens() -> tuple[str, ...]:
         *COMMUNICATION_CHANNELS,
         *COMMUNICATION_TOPICS,
         *COMMUNICATION_ENGAGEMENTS,
+        *PLAN_VALUES,
     )
