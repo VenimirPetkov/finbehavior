@@ -9,6 +9,8 @@ from .config.numerical import (
     MIN_VALUES_FOR_QUANTILES,
 )
 
+ZERO_BUCKET_NAME = "zero"
+
 
 class QuantileBucketizer:
     def __init__(
@@ -26,18 +28,21 @@ class QuantileBucketizer:
         key_token: str,
         values: Sequence[int | float],
     ) -> None:
-        if len(values) < MIN_VALUES_FOR_QUANTILES:
-            raise ValueError(
-                "At least two values are required to fit quantile boundaries"
-            )
-
         numeric_values = tuple(float(value) for value in values)
 
         if not all(isfinite(value) for value in numeric_values):
             raise ValueError("Numerical values must be finite")
 
+        non_zero_values = tuple(value for value in numeric_values if value != 0.0)
+
+        if len(non_zero_values) < MIN_VALUES_FOR_QUANTILES:
+            raise ValueError(
+                "At least two non-zero values are required "
+                "to fit quantile boundaries"
+            )
+
         boundaries = quantiles(
-            numeric_values,
+            non_zero_values,
             n=self.number_of_buckets,
             method="inclusive",
         )
@@ -56,6 +61,9 @@ class QuantileBucketizer:
 
         if not isfinite(numeric_value):
             raise ValueError("Numerical value must be finite")
+
+        if numeric_value == 0.0:
+            return self._build_zero_bucket_token(key_token)
 
         boundaries = self._boundaries[key_token]
 
@@ -85,12 +93,17 @@ class QuantileBucketizer:
         if key_token not in self._boundaries:
             raise ValueError(f"No quantile boundaries fitted for key: {key_token}")
 
-        return tuple(
+        quantile_tokens = tuple(
             self._build_bucket_token(
                 key_token=key_token,
                 bucket_index=bucket_index,
             )
             for bucket_index in range(self.number_of_buckets)
+        )
+
+        return (
+            self._build_zero_bucket_token(key_token),
+            *quantile_tokens,
         )
 
     @staticmethod
@@ -99,3 +112,9 @@ class QuantileBucketizer:
         bucket_index: int,
     ) -> str:
         return f"{key_token}.bucket_{bucket_index}"
+
+    @staticmethod
+    def _build_zero_bucket_token(
+        key_token: str,
+    ) -> str:
+        return f"{key_token}.{ZERO_BUCKET_NAME}"

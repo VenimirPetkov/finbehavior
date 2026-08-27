@@ -156,7 +156,8 @@ def test_rejects_invalid_bucket_count():
         QuantileBucketizer(
             number_of_buckets=1,
         )
-        
+
+
 def test_numerical_bucket_token_can_be_registered_in_vocabulary():
     key_token = get_event_key_token(
         EventSource.TRANSACTION,
@@ -174,23 +175,40 @@ def test_numerical_bucket_token_can_be_registered_in_vocabulary():
 
     vocab = build_vocabulary()
 
-    vocab.add_many(
-        bucketizer.get_bucket_tokens(
-            key_token
-        )
-    )
+    vocab.add_many(bucketizer.get_bucket_tokens(key_token))
 
     bucket_token = bucketizer.transform(
         key_token,
         428.73,
     )
 
-    token_id = vocab.get_id(
-        bucket_token
-    )
+    token_id = vocab.get_id(bucket_token)
 
     assert bucket_token == "transaction.amount.bucket_2"
 
-    assert vocab.get_token(
-        token_id
-    ) == bucket_token
+    assert vocab.get_token(token_id) == bucket_token
+
+
+def test_zero_uses_dedicated_bucket():
+    key_token = get_event_key_token(
+        EventSource.TRANSACTION,
+        AMOUNT_FIELD,
+    )
+
+    bucketizer = QuantileBucketizer(
+        number_of_buckets=4,
+    )
+
+    bucketizer.fit(
+        key_token,
+        TRANSACTION_AMOUNTS,
+    )
+
+    token = bucketizer.transform(
+        key_token,
+        0,
+    )
+
+    assert token == "transaction.amount.zero"
+
+    assert token in bucketizer.get_bucket_tokens(key_token)
