@@ -1,3 +1,5 @@
+from collections.abc import Iterable
+
 from finbehavior.tokenization.categorical import (
     get_categorical_tokens,
 )
@@ -13,8 +15,7 @@ class Vocabulary:
         self._token_to_id: dict[str, int] = {}
         self._id_to_token: list[str] = []
 
-        for token in SPECIAL_TOKENS:
-            self.add(token)
+        self.add_many(SPECIAL_TOKENS)
 
     def add(self, token: str) -> int:
         if token in self._token_to_id:
@@ -26,6 +27,13 @@ class Vocabulary:
         self._id_to_token.append(token)
 
         return token_id
+
+    def add_many(
+        self,
+        tokens: Iterable[str],
+    ) -> None:
+        for token in tokens:
+            self.add(token)
 
     def get_id(self, token: str) -> int:
         return self._token_to_id[token]
@@ -46,10 +54,7 @@ class Vocabulary:
 def build_vocabulary() -> Vocabulary:
     vocab = Vocabulary()
 
-    for token in get_key_tokens():
-        vocab.add(token)
-
-    for token in get_categorical_tokens():
-        vocab.add(token)
+    vocab.add_many(get_key_tokens())
+    vocab.add_many(get_categorical_tokens())
 
     return vocab

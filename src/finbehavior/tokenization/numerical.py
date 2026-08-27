@@ -78,6 +78,21 @@ class QuantileBucketizer:
 
         return self._boundaries[key_token]
 
+    def get_bucket_tokens(
+        self,
+        key_token: str,
+    ) -> tuple[str, ...]:
+        if key_token not in self._boundaries:
+            raise ValueError(f"No quantile boundaries fitted for key: {key_token}")
+
+        return tuple(
+            self._build_bucket_token(
+                key_token=key_token,
+                bucket_index=bucket_index,
+            )
+            for bucket_index in range(self.number_of_buckets)
+        )
+
     @staticmethod
     def _build_bucket_token(
         key_token: str,
