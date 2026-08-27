@@ -19,7 +19,6 @@ from finbehavior.tokenization.keys import get_event_key_token
 from finbehavior.tokenization.numerical import QuantileBucketizer
 from finbehavior.tokenization.vocabulary import build_vocabulary
 
-
 DEMO_TRANSACTION_AMOUNTS = (
     5,
     8,
@@ -90,11 +89,7 @@ def main() -> None:
         DEMO_TRANSACTION_AMOUNTS,
     )
 
-    vocabulary.add_many(
-        bucketizer.get_bucket_tokens(
-            amount_key
-        )
-    )
+    vocabulary.add_many(bucketizer.get_bucket_tokens(amount_key))
 
     tokenized = tokenize_event(
         event=event,
@@ -149,15 +144,11 @@ def print_numerical_step(
 
     print(f"{amount_key} boundaries:")
 
-    for boundary in bucketizer.get_boundaries(
-        amount_key
-    ):
+    for boundary in bucketizer.get_boundaries(amount_key):
         print(f"  {boundary:.2f}")
 
     print()
-    print(
-        f"{amount} -> {bucket_token}"
-    )
+    print(f"{amount} -> {bucket_token}")
 
 
 def print_tokenized_event(
@@ -168,53 +159,30 @@ def print_tokenized_event(
     print("TOKENIZED EVENT")
     print("=" * 50)
 
-    event_token = vocabulary.get_token(
-        tokenized.event_token_id
-    )
+    event_token = vocabulary.get_token(tokenized.event_token_id)
 
-    print(
-        f"{event_token} -> "
-        f"{tokenized.event_token_id}"
-    )
+    print(f"{event_token} -> " f"{tokenized.event_token_id}")
 
     for field in tokenized.fields:
-        key_token = vocabulary.get_token(
-            field.key_id
-        )
+        key_token = vocabulary.get_token(field.key_id)
 
-        value_token = vocabulary.get_token(
-            field.value_id
-        )
+        value_token = vocabulary.get_token(field.value_id)
 
         print()
-        print(
-            f"{key_token:<35} -> "
-            f"{field.key_id}"
-        )
+        print(f"{key_token:<35} -> " f"{field.key_id}")
 
-        print(
-            f"{value_token:<35} -> "
-            f"{field.value_id}"
-        )
+        print(f"{value_token:<35} -> " f"{field.value_id}")
 
     print()
     print("TEMPORAL")
     print("=" * 50)
 
-    print(
-        "elapsed feature: "
-        f"{tokenized.elapsed_time_feature:.6f}"
-    )
+    print("elapsed feature: " f"{tokenized.elapsed_time_feature:.6f}")
 
     print("calendar features:")
 
-    for index, value in enumerate(
-        tokenized.calendar_features
-    ):
-        print(
-            f"  feature_{index}: "
-            f"{value:.6f}"
-        )
+    for index, value in enumerate(tokenized.calendar_features):
+        print(f"  feature_{index}: " f"{value:.6f}")
 
 
 if __name__ == "__main__":
