@@ -2,6 +2,7 @@ import random
 
 from finbehavior.data.behavior_profile import BehaviorProfile
 from finbehavior.data.generators.profile import generate_profile_state
+from finbehavior.data.reference.profile import PLAN_VALUES
 from finbehavior.data.reference.regions import REGIONS
 
 
@@ -20,11 +21,7 @@ def test_generate_profile_state():
         random.Random(42),
     )
 
-    assert profile.fields["plan"] in {
-        "basic",
-        "standard",
-        "premium",
-    }
+    assert profile.fields["plan"] in PLAN_VALUES
 
     assert profile.fields["region"] in REGIONS
 

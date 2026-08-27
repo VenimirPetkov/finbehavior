@@ -1,0 +1,9 @@
+PLAN_BASIC = "basic"
+PLAN_STANDARD = "standard"
+PLAN_PREMIUM = "premium"
+
+PLAN_VALUES = (
+    PLAN_BASIC,
+    PLAN_STANDARD,
+    PLAN_PREMIUM,
+)

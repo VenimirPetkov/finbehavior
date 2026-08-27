@@ -1,5 +1,6 @@
 import random
 
+from finbehavior.data.reference.profile import PLAN_VALUES
 from finbehavior.data.reference.regions import REGIONS
 from finbehavior.domain.profile import ProfileState
 
@@ -18,20 +19,20 @@ def choose_plan(
 
     if score >= 0.75:
         return rng.choices(
-            population=["basic", "standard", "premium"],
+            population=PLAN_VALUES,
             weights=[0.10, 0.30, 0.60],
             k=1,
         )[0]
 
     if score >= 0.40:
         return rng.choices(
-            population=["basic", "standard", "premium"],
+            population=PLAN_VALUES,
             weights=[0.25, 0.55, 0.20],
             k=1,
         )[0]
 
     return rng.choices(
-        population=["basic", "standard", "premium"],
+        population=PLAN_VALUES,
         weights=[0.70, 0.25, 0.05],
         k=1,
     )[0]
