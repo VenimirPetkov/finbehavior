@@ -73,20 +73,11 @@ def test_higher_activity_increases_relevant_event_rates():
     low_rates = calculate_daily_event_rates(low_activity)
     high_rates = calculate_daily_event_rates(high_activity)
 
-    assert (
-        high_rates[EventSource.TRANSACTION]
-        > low_rates[EventSource.TRANSACTION]
-    )
+    assert high_rates[EventSource.TRANSACTION] > low_rates[EventSource.TRANSACTION]
 
-    assert (
-        high_rates[EventSource.APP]
-        > low_rates[EventSource.APP]
-    )
+    assert high_rates[EventSource.APP] > low_rates[EventSource.APP]
 
-    assert (
-        high_rates[EventSource.TRADING]
-        > low_rates[EventSource.TRADING]
-    )
+    assert high_rates[EventSource.TRADING] > low_rates[EventSource.TRADING]
 
 
 def test_generate_event_history():
@@ -103,20 +94,14 @@ def test_generate_event_history():
 
     assert len(events) > 0
 
-    assert all(
-        start < event.created < end
-        for event in events
-    )
+    assert all(start < event.created < end for event in events)
 
     assert events == sorted(
         events,
         key=lambda event: event.created,
     )
 
-    assert all(
-        isinstance(event.source, EventSource)
-        for event in events
-    )
+    assert all(isinstance(event.source, EventSource) for event in events)
 
 
 def test_generate_event_history_is_reproducible():

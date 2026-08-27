@@ -67,6 +67,7 @@ def test_rejects_invalid_date_range():
             rng=random.Random(42),
         )
 
+
 def test_rejects_negative_daily_rate():
     with pytest.raises(ValueError):
         generate_event_timestamps(
