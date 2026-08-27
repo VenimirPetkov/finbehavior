@@ -13,22 +13,12 @@ def soft_log_elapsed_seconds(
     elapsed_seconds: float,
 ) -> float:
     if not isfinite(elapsed_seconds):
-        raise ValueError(
-            "Elapsed seconds must be finite"
-        )
+        raise ValueError("Elapsed seconds must be finite")
 
     if elapsed_seconds < 0:
-        raise ValueError(
-            "Elapsed seconds cannot be negative"
-        )
+        raise ValueError("Elapsed seconds cannot be negative")
 
-    return (
-        SOFT_LOG_SCALE_SECONDS
-        * log1p(
-            elapsed_seconds
-            / SOFT_LOG_SCALE_SECONDS
-        )
-    )
+    return SOFT_LOG_SCALE_SECONDS * log1p(elapsed_seconds / SOFT_LOG_SCALE_SECONDS)
 
 
 def seconds_to_latest_event(
@@ -36,13 +26,9 @@ def seconds_to_latest_event(
     latest_event_time: datetime,
 ) -> float:
     if event_time > latest_event_time:
-        raise ValueError(
-            "Event time cannot be after latest event time"
-        )
+        raise ValueError("Event time cannot be after latest event time")
 
-    return (
-        latest_event_time - event_time
-    ).total_seconds()
+    return (latest_event_time - event_time).total_seconds()
 
 
 def encode_cycle(

@@ -12,13 +12,9 @@ from finbehavior.tokenization.temporal import (
 
 
 def test_seconds_to_latest_event():
-    event_time = datetime(
-        2026, 8, 27, 15, 0
-    )
+    event_time = datetime(2026, 8, 27, 15, 0)
 
-    latest_event_time = datetime(
-        2026, 8, 27, 18, 0
-    )
+    latest_event_time = datetime(2026, 8, 27, 18, 0)
 
     seconds = seconds_to_latest_event(
         event_time,
@@ -29,9 +25,7 @@ def test_seconds_to_latest_event():
 
 
 def test_latest_event_has_zero_elapsed_time():
-    timestamp = datetime(
-        2026, 8, 27, 18, 0
-    )
+    timestamp = datetime(2026, 8, 27, 18, 0)
 
     assert (
         seconds_to_latest_event(
@@ -49,9 +43,7 @@ def test_soft_log_zero_is_zero():
 def test_soft_log_uses_pragma_transformation():
     result = soft_log_elapsed_seconds(8)
 
-    assert result == pytest.approx(
-        8 * log(2)
-    )
+    assert result == pytest.approx(8 * log(2))
 
 
 def test_encode_cycle_wraps_around():
@@ -65,19 +57,13 @@ def test_encode_cycle_wraps_around():
         24,
     )
 
-    assert end_sin == pytest.approx(
-        start_sin
-    )
+    assert end_sin == pytest.approx(start_sin)
 
-    assert end_cos == pytest.approx(
-        start_cos
-    )
+    assert end_cos == pytest.approx(start_cos)
 
 
 def test_calendar_features_have_six_values():
-    features = get_calendar_features(
-        datetime(2026, 8, 27, 14, 30)
-    )
+    features = get_calendar_features(datetime(2026, 8, 27, 14, 30))
 
     assert len(features) == 6
 
