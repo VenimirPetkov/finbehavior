@@ -1,9 +1,9 @@
 import random
 
+from finbehavior.data.reference.regions import REGIONS
 from finbehavior.domain.profile import ProfileState
 
-from .behavior_profile import BehaviorProfile
-from .regions import REGIONS
+from ..behavior_profile import BehaviorProfile
 
 
 def choose_plan(

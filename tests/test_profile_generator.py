@@ -1,8 +1,8 @@
 import random
 
 from finbehavior.data.behavior_profile import BehaviorProfile
-from finbehavior.data.profile_generator import generate_profile_state
-from finbehavior.data.regions import REGIONS
+from finbehavior.data.generators.profile import generate_profile_state
+from finbehavior.data.reference.regions import REGIONS
 
 
 def test_generate_profile_state():

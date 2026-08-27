@@ -1,6 +1,6 @@
 import random
 
-from .behavior_profile import BehaviorProfile
+from ..behavior_profile import BehaviorProfile
 
 
 def generate_behavior_profile(

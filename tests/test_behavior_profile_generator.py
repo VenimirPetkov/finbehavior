@@ -1,6 +1,6 @@
 import random
 
-from finbehavior.data.behavior_profile_generator import (
+from finbehavior.data.generators.behavior_profile import (
     generate_behavior_profile,
 )
 
