@@ -17,3 +17,10 @@ class TensorizedEvent:
     value_ids: torch.Tensor
     calendar_features: torch.Tensor
     elapsed_time_feature: torch.Tensor
+
+
+@dataclass(frozen=True)
+class TensorizedUser:
+    user_id: int
+    profile: TensorizedProfile
+    events: tuple[TensorizedEvent, ...]
