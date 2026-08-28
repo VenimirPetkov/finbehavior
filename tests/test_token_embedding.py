@@ -1,5 +1,6 @@
 import torch
 
+from finbehavior.models.config.embedding import DEFAULT_EMBEDDING_DIMENSION
 from finbehavior.models.embedding import (
     TokenEmbedding,
 )
@@ -24,7 +25,7 @@ def test_token_embedding():
 
     assert vectors.shape == (
         3,
-        32,
+        DEFAULT_EMBEDDING_DIMENSION,
     )
 
     assert torch.equal(
