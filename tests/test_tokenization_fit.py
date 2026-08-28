@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from finbehavior.data.reference.field_keys import AMOUNT_FIELD
 from finbehavior.domain.enums import EventSource
 from finbehavior.domain.event import Event
 from finbehavior.domain.profile import ProfileState
@@ -71,12 +72,12 @@ def test_fit_numerical_tokenization_from_records():
 
     transaction_key = get_event_key_token(
         EventSource.TRANSACTION,
-        "amount",
+        AMOUNT_FIELD,
     )
 
     trading_key = get_event_key_token(
         EventSource.TRADING,
-        "amount",
+        AMOUNT_FIELD,
     )
 
     assert bucketizer.get_boundaries(transaction_key)

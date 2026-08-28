@@ -35,12 +35,9 @@ def test_event_key_tokens_are_source_aware():
     assert ACTION_FIELD not in keys
     assert AMOUNT_FIELD not in keys
 
+
 def test_numerical_field_keys_are_explicit_by_source():
     assert NUMERICAL_FIELD_KEYS_BY_SOURCE == {
-        EventSource.TRANSACTION: (
-            AMOUNT_FIELD,
-        ),
-        EventSource.TRADING: (
-            AMOUNT_FIELD,
-        ),
+        EventSource.TRANSACTION: (AMOUNT_FIELD,),
+        EventSource.TRADING: (AMOUNT_FIELD,),
     }

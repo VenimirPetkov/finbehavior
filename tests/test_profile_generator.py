@@ -94,5 +94,14 @@ def test_balance_quantile_stays_within_bounds():
             random.Random(seed),
         )
 
-        assert 0 <= low_profile.fields["balance_quantile"] <= 9
-        assert 0 <= high_profile.fields["balance_quantile"] <= 9
+        assert (
+            BALANCE_QUANTILE_MIN
+            <= low_profile.fields[BALANCE_QUANTILE_FIELD]
+            <= BALANCE_QUANTILE_MAX
+        )
+
+        assert (
+            BALANCE_QUANTILE_MIN
+            <= high_profile.fields[BALANCE_QUANTILE_FIELD]
+            <= BALANCE_QUANTILE_MAX
+        )
