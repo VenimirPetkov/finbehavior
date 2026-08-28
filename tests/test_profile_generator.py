@@ -2,8 +2,16 @@ import random
 
 from finbehavior.data.behavior_profile import BehaviorProfile
 from finbehavior.data.generators.profile import generate_profile_state
-from finbehavior.data.reference.field_keys import BALANCE_QUANTILE_FIELD, PLAN_FIELD, REGION_FIELD
-from finbehavior.data.reference.profile import BALANCE_QUANTILE_MAX, BALANCE_QUANTILE_MIN, PLAN_VALUES
+from finbehavior.data.reference.field_keys import (
+    BALANCE_QUANTILE_FIELD,
+    PLAN_FIELD,
+    REGION_FIELD,
+)
+from finbehavior.data.reference.profile import (
+    BALANCE_QUANTILE_MAX,
+    BALANCE_QUANTILE_MIN,
+    PLAN_VALUES,
+)
 from finbehavior.data.reference.regions import REGIONS
 
 
@@ -22,15 +30,9 @@ def test_generate_profile_state():
         random.Random(42),
     )
 
-    assert (
-        profile.fields[PLAN_FIELD]
-        in PLAN_VALUES
-    )
+    assert profile.fields[PLAN_FIELD] in PLAN_VALUES
 
-    assert (
-        profile.fields[REGION_FIELD]
-        in REGIONS
-    )
+    assert profile.fields[REGION_FIELD] in REGIONS
 
     assert (
         BALANCE_QUANTILE_MIN
@@ -92,5 +94,14 @@ def test_balance_quantile_stays_within_bounds():
             random.Random(seed),
         )
 
-        assert 0 <= low_profile.fields["balance_quantile"] <= 9
-        assert 0 <= high_profile.fields["balance_quantile"] <= 9
+        assert (
+            BALANCE_QUANTILE_MIN
+            <= low_profile.fields[BALANCE_QUANTILE_FIELD]
+            <= BALANCE_QUANTILE_MAX
+        )
+
+        assert (
+            BALANCE_QUANTILE_MIN
+            <= high_profile.fields[BALANCE_QUANTILE_FIELD]
+            <= BALANCE_QUANTILE_MAX
+        )
