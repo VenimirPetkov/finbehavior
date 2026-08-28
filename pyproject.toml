@@ -24,3 +24,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 addopts = "--basetemp=.pytest-tmp"
 testpaths = ["tests"]
+
+[tool.black]
+target-version = ["py311", "py312", "py313"]
+line-length = 88
