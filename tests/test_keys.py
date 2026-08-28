@@ -2,6 +2,7 @@ from finbehavior.data.reference.field_keys import (
     ACTION_FIELD,
     AMOUNT_FIELD,
     CURRENCY_FIELD,
+    NUMERICAL_FIELD_KEYS_BY_SOURCE,
     PLAN_FIELD,
     TYPE_FIELD,
 )
@@ -33,3 +34,13 @@ def test_event_key_tokens_are_source_aware():
     assert len({app_action, trading_action, transaction_amount, trading_amount}) == 4
     assert ACTION_FIELD not in keys
     assert AMOUNT_FIELD not in keys
+
+def test_numerical_field_keys_are_explicit_by_source():
+    assert NUMERICAL_FIELD_KEYS_BY_SOURCE == {
+        EventSource.TRANSACTION: (
+            AMOUNT_FIELD,
+        ),
+        EventSource.TRADING: (
+            AMOUNT_FIELD,
+        ),
+    }
