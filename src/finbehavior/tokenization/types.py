@@ -13,3 +13,16 @@ class TokenizedEvent:
     fields: tuple[TokenizedField, ...]
     calendar_features: tuple[float, ...]
     elapsed_time_feature: float
+
+
+@dataclass(frozen=True)
+class TokenizedProfile:
+    user_token_id: int
+    fields: tuple[TokenizedField, ...]
+
+
+@dataclass(frozen=True)
+class TokenizedUser:
+    user_id: int
+    profile: TokenizedProfile
+    events: tuple[TokenizedEvent, ...]

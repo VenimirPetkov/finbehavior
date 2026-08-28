@@ -23,19 +23,13 @@ def tokenize_event(
     vocabulary: Vocabulary,
     numerical_bucketizer: QuantileBucketizer,
 ) -> TokenizedEvent:
-    allowed_fields = EVENT_FIELD_KEYS_BY_SOURCE[
-        event.source
-    ]
+    allowed_fields = EVENT_FIELD_KEYS_BY_SOURCE[event.source]
 
-    unknown_fields = (
-        set(event.fields)
-        - set(allowed_fields)
-    )
+    unknown_fields = set(event.fields) - set(allowed_fields)
 
     if unknown_fields:
         raise ValueError(
-            f"Unknown fields for {event.source.value}: "
-            f"{sorted(unknown_fields)}"
+            f"Unknown fields for {event.source.value}: " f"{sorted(unknown_fields)}"
         )
 
     tokenized_fields = tuple(
@@ -55,16 +49,10 @@ def tokenize_event(
     )
 
     return TokenizedEvent(
-        event_token_id=vocabulary.get_id(
-            EVT_TOKEN
-        ),
+        event_token_id=vocabulary.get_id(EVT_TOKEN),
         fields=tokenized_fields,
-        calendar_features=get_calendar_features(
-            event.created
-        ),
-        elapsed_time_feature=soft_log_elapsed_seconds(
-            elapsed_seconds
-        ),
+        calendar_features=get_calendar_features(event.created),
+        elapsed_time_feature=soft_log_elapsed_seconds(elapsed_seconds),
     )
 
 
@@ -79,9 +67,7 @@ def _tokenize_field(
         field_name,
     )
 
-    key_id = vocabulary.get_id(
-        key_token
-    )
+    key_id = vocabulary.get_id(key_token)
 
     value = event.fields[field_name]
 
@@ -105,28 +91,17 @@ def _encode_value(
     numerical_bucketizer: QuantileBucketizer,
 ) -> int:
     if isinstance(value, bool):
-        raise TypeError(
-            "Boolean event values are not supported yet"
-        )
+        raise TypeError("Boolean event values are not supported yet")
 
     if isinstance(value, (int, float)):
-        bucket_token = (
-            numerical_bucketizer.transform(
-                key_token,
-                value,
-            )
+        bucket_token = numerical_bucketizer.transform(
+            key_token,
+            value,
         )
 
-        return vocabulary.get_id(
-            bucket_token
-        )
+        return vocabulary.get_id(bucket_token)
 
     if isinstance(value, str):
-        return vocabulary.encode(
-            value
-        )
+        return vocabulary.encode(value)
 
-    raise TypeError(
-        "Unsupported event value type: "
-        f"{type(value).__name__}"
-    )
+    raise TypeError("Unsupported event value type: " f"{type(value).__name__}")

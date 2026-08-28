@@ -21,7 +21,6 @@ from finbehavior.tokenization.vocabulary import (
     build_vocabulary,
 )
 
-
 TRANSACTION_AMOUNTS = (
     5,
     8,
@@ -82,11 +81,7 @@ def test_tokenize_transaction_event():
         TRANSACTION_AMOUNTS,
     )
 
-    vocabulary.add_many(
-        bucketizer.get_bucket_tokens(
-            amount_key
-        )
-    )
+    vocabulary.add_many(bucketizer.get_bucket_tokens(amount_key))
 
     tokenized = tokenize_event(
         event=event,
@@ -101,17 +96,10 @@ def test_tokenize_transaction_event():
         numerical_bucketizer=bucketizer,
     )
 
-    assert tokenized.event_token_id == (
-        vocabulary.get_id(EVT_TOKEN)
-    )
+    assert tokenized.event_token_id == (vocabulary.get_id(EVT_TOKEN))
 
     assert len(tokenized.fields) == 6
 
-    assert len(
-        tokenized.calendar_features
-    ) == 6
+    assert len(tokenized.calendar_features) == 6
 
-    assert (
-        tokenized.elapsed_time_feature
-        > 0
-    )
+    assert tokenized.elapsed_time_feature > 0

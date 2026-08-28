@@ -25,6 +25,7 @@ from finbehavior.data.reference.transaction import (
     TRANSACTION_DIRECTIONS,
     TRANSACTION_TYPES,
 )
+from finbehavior.tokenization.profile_values import get_balance_quantile_tokens
 
 
 def get_categorical_tokens() -> tuple[str, ...]:
@@ -53,4 +54,5 @@ def get_categorical_tokens() -> tuple[str, ...]:
         *COMMUNICATION_TOPICS,
         *COMMUNICATION_ENGAGEMENTS,
         *PLAN_VALUES,
+        *get_balance_quantile_tokens(),
     )

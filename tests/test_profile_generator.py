@@ -2,7 +2,8 @@ import random
 
 from finbehavior.data.behavior_profile import BehaviorProfile
 from finbehavior.data.generators.profile import generate_profile_state
-from finbehavior.data.reference.profile import PLAN_VALUES
+from finbehavior.data.reference.field_keys import BALANCE_QUANTILE_FIELD, PLAN_FIELD, REGION_FIELD
+from finbehavior.data.reference.profile import BALANCE_QUANTILE_MAX, BALANCE_QUANTILE_MIN, PLAN_VALUES
 from finbehavior.data.reference.regions import REGIONS
 
 
@@ -21,11 +22,21 @@ def test_generate_profile_state():
         random.Random(42),
     )
 
-    assert profile.fields["plan"] in PLAN_VALUES
+    assert (
+        profile.fields[PLAN_FIELD]
+        in PLAN_VALUES
+    )
 
-    assert profile.fields["region"] in REGIONS
+    assert (
+        profile.fields[REGION_FIELD]
+        in REGIONS
+    )
 
-    assert 0 <= profile.fields["balance_quantile"] <= 9
+    assert (
+        BALANCE_QUANTILE_MIN
+        <= profile.fields[BALANCE_QUANTILE_FIELD]
+        <= BALANCE_QUANTILE_MAX
+    )
 
 
 def test_generate_profile_state_is_reproducible():
