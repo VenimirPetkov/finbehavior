@@ -1,5 +1,5 @@
 from bisect import bisect_right
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from math import isfinite
 from statistics import quantiles
 
@@ -105,6 +105,38 @@ class QuantileBucketizer:
             self._build_zero_bucket_token(key_token),
             *quantile_tokens,
         )
+
+    def get_all_boundaries(
+        self,
+    ) -> dict[str, tuple[float, ...]]:
+        return dict(self._boundaries)
+
+    @classmethod
+    def from_boundaries(
+        cls,
+        number_of_buckets: int,
+        boundaries: Mapping[
+            str,
+            Sequence[float],
+        ],
+    ) -> "QuantileBucketizer":
+        bucketizer = cls(number_of_buckets=number_of_buckets)
+
+        expected_boundary_count = number_of_buckets - 1
+
+        for key_token, values in boundaries.items():
+            numeric_boundaries = tuple(float(value) for value in values)
+
+            if len(numeric_boundaries) != (expected_boundary_count):
+                raise ValueError(
+                    f"Expected "
+                    f"{expected_boundary_count} "
+                    f"boundaries for {key_token}"
+                )
+
+            bucketizer._boundaries[key_token] = numeric_boundaries
+
+        return bucketizer
 
     @staticmethod
     def _build_bucket_token(
