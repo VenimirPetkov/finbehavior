@@ -160,7 +160,7 @@ def test_history_embedding():
     )
 
 
-def test_history_embedding_rejects_empty_history():
+def test_history_embedding_supports_empty_history():
     vocabulary = build_vocabulary()
 
     field_embedding = FieldEmbedding(
@@ -178,8 +178,9 @@ def test_history_embedding_rejects_empty_history():
         event_embedding=event_embedding,
     )
 
-    with pytest.raises(
-        ValueError,
-        match="History must contain at least one event",
-    ):
-        history_embedding(())
+    history = history_embedding(())
+
+    assert history.shape == (
+        0,
+        DEFAULT_EMBEDDING_DIMENSION,
+    )

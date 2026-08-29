@@ -22,7 +22,12 @@ class HistoryEmbedding(nn.Module):
         events: tuple[TensorizedEvent, ...],
     ) -> torch.Tensor:
         if not events:
-            raise ValueError("History must contain at least one event")
+            return self.event_embedding.composition.weight.new_empty(
+                (
+                    0,
+                    self.event_embedding.composition.out_features,
+                )
+            )
 
         event_vectors = tuple(self.event_embedding(event) for event in events)
 
