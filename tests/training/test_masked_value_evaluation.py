@@ -9,18 +9,10 @@ from finbehavior.models.masked_value_prediction_head import (
     MaskedValuePredictionHead,
 )
 from finbehavior.tensorization.types import (
-    TensorizedEvent,
-    TensorizedProfile,
     TensorizedUser,
-)
-from finbehavior.tokenization.config.temporal import (
-    CALENDAR_FEATURE_DIMENSION,
 )
 from finbehavior.training.masked_value_evaluation import (
     evaluate_masked_values,
-)
-from finbehavior.training.masking import (
-    mask_event_value,
 )
 
 
@@ -49,67 +41,16 @@ class EvaluationStubModel(nn.Module):
         )
 
 
-def build_example():
-    profile = TensorizedProfile(
-        user_token_id=torch.tensor(
-            2,
-            dtype=torch.long,
-        ),
-        key_ids=torch.empty(
-            0,
-            dtype=torch.long,
-        ),
-        value_ids=torch.empty(
-            0,
-            dtype=torch.long,
-        ),
-    )
-
-    event = TensorizedEvent(
-        event_token_id=torch.tensor(
-            3,
-            dtype=torch.long,
-        ),
-        key_ids=torch.tensor(
-            [10],
-            dtype=torch.long,
-        ),
-        value_ids=torch.tensor(
-            [2],
-            dtype=torch.long,
-        ),
-        calendar_features=torch.zeros(
-            CALENDAR_FEATURE_DIMENSION,
-            dtype=torch.float32,
-        ),
-        elapsed_time_feature=torch.tensor(
-            0.5,
-            dtype=torch.float32,
-        ),
-    )
-
-    user = TensorizedUser(
-        user_id=1,
-        profile=profile,
-        events=(event,),
-    )
-
-    return mask_event_value(
-        user=user,
-        event_index=0,
-        field_index=0,
-        mask_token_id=0,
-    )
-
-
-def test_evaluate_masked_values_returns_average_loss():
+def test_evaluate_masked_values_returns_average_loss(
+    masked_value_example_factory,
+):
     model = EvaluationStubModel()
 
     prediction_head = MaskedValuePredictionHead(
         vocabulary_size=4,
     )
 
-    example = build_example()
+    example = masked_value_example_factory(10)
 
     loss = evaluate_masked_values(
         model=model,
@@ -128,14 +69,16 @@ def test_evaluate_masked_values_returns_average_loss():
     assert loss > 0.0
 
 
-def test_evaluation_does_not_change_weights():
+def test_evaluation_does_not_change_weights(
+    masked_value_example_factory,
+):
     model = EvaluationStubModel()
 
     prediction_head = MaskedValuePredictionHead(
         vocabulary_size=4,
     )
 
-    example = build_example()
+    example = masked_value_example_factory(10)
 
     model_before = model.event_representation.detach().clone()
 
@@ -158,7 +101,9 @@ def test_evaluation_does_not_change_weights():
     )
 
 
-def test_evaluation_restores_training_mode():
+def test_evaluation_restores_training_mode(
+    masked_value_example_factory,
+):
     model = EvaluationStubModel()
     model.train()
 
@@ -167,10 +112,12 @@ def test_evaluation_restores_training_mode():
     )
     prediction_head.train()
 
+    example = masked_value_example_factory(10)
+
     evaluate_masked_values(
         model=model,
         prediction_head=prediction_head,
-        examples=(build_example(),),
+        examples=(example,),
     )
 
     assert model.training
