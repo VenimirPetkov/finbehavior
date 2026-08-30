@@ -20,13 +20,20 @@ class FinBehaviorModel(nn.Module):
         super().__init__()
 
         self.user_sequence_embedding = user_sequence_embedding
-
         self.encoder = encoder
 
-    def forward(
+    def encode_sequence(
         self,
         user: TensorizedUser,
     ) -> torch.Tensor:
         sequence = self.user_sequence_embedding(user)
 
         return self.encoder(sequence)
+
+    def forward(
+        self,
+        user: TensorizedUser,
+    ) -> torch.Tensor:
+        encoded_sequence = self.encode_sequence(user)
+
+        return encoded_sequence[0]

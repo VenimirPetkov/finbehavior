@@ -126,9 +126,18 @@ def test_finbehavior_model_encodes_user():
         events=(),
     )
 
-    output = model(user)
+    encoded_sequence = model.encode_sequence(user)
 
-    assert output.shape == (
+    user_representation = model(user)
+
+    assert encoded_sequence.shape == (
         1,
         DEFAULT_EMBEDDING_DIMENSION,
+    )
+
+    assert user_representation.shape == (DEFAULT_EMBEDDING_DIMENSION,)
+
+    assert torch.allclose(
+        user_representation,
+        encoded_sequence[0],
     )
