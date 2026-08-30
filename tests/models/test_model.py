@@ -9,9 +9,6 @@ from finbehavior.models.encoder import (
 from finbehavior.models.event_embedding import (
     EventEmbedding,
 )
-from finbehavior.models.feed_forward import (
-    FeedForward,
-)
 from finbehavior.models.field_embedding import (
     FieldEmbedding,
 )
@@ -24,17 +21,8 @@ from finbehavior.models.model import (
 from finbehavior.models.profile_embedding import (
     ProfileEmbedding,
 )
-from finbehavior.models.self_attention import (
-    SelfAttention,
-)
-from finbehavior.models.self_attention_block import (
-    SelfAttentionBlock,
-)
 from finbehavior.models.temporal_projection import (
     TemporalProjection,
-)
-from finbehavior.models.transformer_block import (
-    TransformerBlock,
 )
 from finbehavior.models.user_sequence_embedding import (
     UserSequenceEmbedding,
@@ -51,22 +39,9 @@ from finbehavior.tokenization.vocabulary import (
 )
 
 
-def build_transformer_block():
-    self_attention = SelfAttention()
-
-    self_attention_block = SelfAttentionBlock(
-        self_attention=self_attention,
-    )
-
-    feed_forward = FeedForward()
-
-    return TransformerBlock(
-        self_attention_block=self_attention_block,
-        feed_forward=feed_forward,
-    )
-
-
-def test_finbehavior_model_encodes_user():
+def test_finbehavior_model_encodes_user(
+    transformer_block_factory,
+):
     vocabulary = build_vocabulary()
 
     field_embedding = FieldEmbedding(
@@ -95,8 +70,8 @@ def test_finbehavior_model_encodes_user():
 
     encoder = TransformerEncoder(
         blocks=(
-            build_transformer_block(),
-            build_transformer_block(),
+            transformer_block_factory(),
+            transformer_block_factory(),
         ),
     )
 
