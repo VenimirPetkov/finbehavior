@@ -5,44 +5,11 @@ import torch
 from finbehavior.data.generators.dataset import (
     generate_dataset,
 )
-from finbehavior.models.encoder import (
-    TransformerEncoder,
-)
-from finbehavior.models.event_embedding import (
-    EventEmbedding,
-)
-from finbehavior.models.feed_forward import (
-    FeedForward,
-)
-from finbehavior.models.field_embedding import (
-    FieldEmbedding,
-)
-from finbehavior.models.history_embedding import (
-    HistoryEmbedding,
+from finbehavior.models.factory import (
+    build_finbehavior_model,
 )
 from finbehavior.models.masked_value_prediction_head import (
     MaskedValuePredictionHead,
-)
-from finbehavior.models.model import (
-    FinBehaviorModel,
-)
-from finbehavior.models.profile_embedding import (
-    ProfileEmbedding,
-)
-from finbehavior.models.self_attention import (
-    SelfAttention,
-)
-from finbehavior.models.self_attention_block import (
-    SelfAttentionBlock,
-)
-from finbehavior.models.temporal_projection import (
-    TemporalProjection,
-)
-from finbehavior.models.transformer_block import (
-    TransformerBlock,
-)
-from finbehavior.models.user_sequence_embedding import (
-    UserSequenceEmbedding,
 )
 from finbehavior.tensorization.user import (
     tensorize_user,
@@ -68,55 +35,6 @@ from finbehavior.training.masked_value_training_loop import (
 from finbehavior.training.masking import (
     mask_event_value,
 )
-
-
-def build_transformer_block():
-    return TransformerBlock(
-        self_attention_block=SelfAttentionBlock(
-            self_attention=SelfAttention(),
-        ),
-        feed_forward=FeedForward(),
-    )
-
-
-def build_model(
-    vocabulary_size: int,
-):
-    field_embedding = FieldEmbedding(
-        vocabulary_size=vocabulary_size,
-    )
-
-    profile_embedding = ProfileEmbedding(
-        field_embedding=field_embedding,
-    )
-
-    event_embedding = EventEmbedding(
-        field_embedding=field_embedding,
-        temporal_projection=TemporalProjection(),
-    )
-
-    history_embedding = HistoryEmbedding(
-        event_embedding=event_embedding,
-    )
-
-    user_sequence_embedding = UserSequenceEmbedding(
-        profile_embedding=profile_embedding,
-        history_embedding=history_embedding,
-    )
-
-    encoder = TransformerEncoder(
-        blocks=(
-            build_transformer_block(),
-            build_transformer_block(),
-        ),
-    )
-
-    model = FinBehaviorModel(
-        user_sequence_embedding=user_sequence_embedding,
-        encoder=encoder,
-    )
-
-    return model, field_embedding
 
 
 def test_real_finbehavior_model_can_train_end_to_end():
@@ -178,13 +96,15 @@ def test_real_finbehavior_model_can_train_end_to_end():
         mask_token_id=vocabulary.get_id(MASK_TOKEN),
     )
 
-    model, field_embedding = build_model(
+    model = build_finbehavior_model(
         vocabulary_size=len(vocabulary),
     )
 
     prediction_head = MaskedValuePredictionHead(
         vocabulary_size=len(vocabulary),
     )
+
+    field_embedding = model.user_sequence_embedding.profile_embedding.field_embedding
 
     embedding_before = field_embedding.token_embedding.embedding.weight.detach().clone()
 
