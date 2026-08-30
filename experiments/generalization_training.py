@@ -16,15 +16,18 @@ from finbehavior.models.factory import (
 from finbehavior.models.masked_value_prediction_head import (
     MaskedValuePredictionHead,
 )
+from finbehavior.tensorization.device import (
+    move_user_to_device,
+)
 from finbehavior.tensorization.types import (
-    TensorizedEvent,
-    TensorizedProfile,
     TensorizedUser,
 )
 from finbehavior.tensorization.user import (
     tensorize_user,
 )
-from finbehavior.tokenization.config.numerical import DEFAULT_NUMERICAL_BUCKET_COUNT
+from finbehavior.tokenization.config.numerical import (
+    DEFAULT_NUMERICAL_BUCKET_COUNT,
+)
 from finbehavior.tokenization.fit import (
     fit_numerical_tokenization,
 )
@@ -81,35 +84,7 @@ def print_device_info(
     print(f"Device: {device}")
 
     if device.type == "cuda":
-        print("GPU: " f"{torch.cuda.get_device_name(0)}")
-
-
-def move_user_to_device(
-    user: TensorizedUser,
-    device: torch.device,
-) -> TensorizedUser:
-    profile = TensorizedProfile(
-        user_token_id=(user.profile.user_token_id.to(device)),
-        key_ids=(user.profile.key_ids.to(device)),
-        value_ids=(user.profile.value_ids.to(device)),
-    )
-
-    events = tuple(
-        TensorizedEvent(
-            event_token_id=(event.event_token_id.to(device)),
-            key_ids=(event.key_ids.to(device)),
-            value_ids=(event.value_ids.to(device)),
-            calendar_features=(event.calendar_features.to(device)),
-            elapsed_time_feature=(event.elapsed_time_feature.to(device)),
-        )
-        for event in user.events
-    )
-
-    return TensorizedUser(
-        user_id=user.user_id,
-        profile=profile,
-        events=events,
-    )
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
 
 
 def tensorize_records(
@@ -297,7 +272,7 @@ def run_experiment() -> None:
         users=validation_users,
         mask_token_id=mask_token_id,
         examples_per_user=EXAMPLES_PER_USER,
-        seed=(VALIDATION_EXAMPLE_SELECTION_SEED),
+        seed=VALIDATION_EXAMPLE_SELECTION_SEED,
     )
 
     train_user_ids = {example.user.user_id for example in train_examples}
@@ -384,7 +359,7 @@ def run_experiment() -> None:
         print_epoch_loss(
             epoch=epoch,
             train_loss=train_loss,
-            validation_loss=(validation_loss),
+            validation_loss=validation_loss,
         )
 
     best_validation_epoch = min(
