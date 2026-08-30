@@ -24,8 +24,7 @@ def test_training_loop_reduces_loss(
         prediction_head.output_projection.bias.zero_()
 
     optimizer = torch.optim.SGD(
-        list(trainable_stub_model.parameters())
-        + list(prediction_head.parameters()),
+        list(trainable_stub_model.parameters()) + list(prediction_head.parameters()),
         lr=0.1,
     )
 
@@ -50,8 +49,7 @@ def test_training_loop_rejects_empty_examples(
     )
 
     optimizer = torch.optim.SGD(
-        list(trainable_stub_model.parameters())
-        + list(prediction_head.parameters()),
+        list(trainable_stub_model.parameters()) + list(prediction_head.parameters()),
         lr=0.1,
     )
 
