@@ -28,7 +28,8 @@ def test_masked_value_training_step_updates_weights(
         ] = 1.0
 
     optimizer = torch.optim.SGD(
-        list(trainable_stub_model.parameters()) + list(prediction_head.parameters()),
+        list(trainable_stub_model.parameters())
+        + list(prediction_head.parameters()),
         lr=0.1,
     )
 
