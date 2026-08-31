@@ -47,7 +47,7 @@ class SelfAttention(nn.Module):
 
         attention_scores = torch.matmul(
             queries,
-            keys.transpose(0, 1),
+            keys.transpose(-2, -1),
         )
 
         scaled_attention_scores = attention_scores / math.sqrt(self.embedding_dimension)
