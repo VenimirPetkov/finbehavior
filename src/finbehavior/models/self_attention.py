@@ -11,7 +11,7 @@ from .config.embedding import (
 class SelfAttention(nn.Module):
     def __init__(
         self,
-        embedding_dimension: int = (DEFAULT_EMBEDDING_DIMENSION),
+        embedding_dimension: int = DEFAULT_EMBEDDING_DIMENSION,
     ) -> None:
         super().__init__()
 
@@ -38,6 +38,7 @@ class SelfAttention(nn.Module):
     def forward(
         self,
         sequence: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         queries = self.query_projection(sequence)
 
@@ -51,6 +52,14 @@ class SelfAttention(nn.Module):
         )
 
         scaled_attention_scores = attention_scores / math.sqrt(self.embedding_dimension)
+
+        if attention_mask is not None:
+            key_mask = attention_mask.unsqueeze(-2)
+
+            scaled_attention_scores = scaled_attention_scores.masked_fill(
+                ~key_mask,
+                float("-inf"),
+            )
 
         attention_weights = torch.softmax(
             scaled_attention_scores,

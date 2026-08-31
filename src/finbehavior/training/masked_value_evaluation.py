@@ -5,8 +5,14 @@ from finbehavior.models.masked_value_prediction_head import (
 )
 from finbehavior.models.model import FinBehaviorModel
 
-from .masked_value_training_loss import (
-    masked_value_training_loss,
+from .config.batch import (
+    DEFAULT_BATCH_SIZE,
+)
+from .example_batching import (
+    build_length_aware_batches,
+)
+from .masked_value_batch_training_loss import (
+    masked_value_batch_training_loss,
 )
 from .masking import MaskedValueExample
 
@@ -15,29 +21,42 @@ def evaluate_masked_values(
     model: FinBehaviorModel,
     prediction_head: MaskedValuePredictionHead,
     examples: tuple[MaskedValueExample, ...],
+    batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> float:
     if not examples:
         raise ValueError("Evaluation examples must not be empty")
 
+    if batch_size <= 0:
+        raise ValueError("Batch size must be positive")
+
     model_was_training = model.training
+
     prediction_head_was_training = prediction_head.training
 
     model.eval()
     prediction_head.eval()
 
+    batches = build_length_aware_batches(
+        examples=examples,
+        batch_size=batch_size,
+    )
+
     total_loss = 0.0
 
-    with torch.no_grad():
-        for example in examples:
-            loss = masked_value_training_loss(
-                model=model,
-                prediction_head=prediction_head,
-                example=example,
-            )
+    try:
+        with torch.no_grad():
+            for batch in batches:
+                loss = masked_value_batch_training_loss(
+                    model=model,
+                    prediction_head=prediction_head,
+                    examples=batch,
+                )
 
-            total_loss += loss.item()
+                total_loss += loss.item() * len(batch)
 
-    model.train(model_was_training)
-    prediction_head.train(prediction_head_was_training)
+    finally:
+        model.train(model_was_training)
+
+        prediction_head.train(prediction_head_was_training)
 
     return total_loss / len(examples)

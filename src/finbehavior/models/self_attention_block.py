@@ -11,7 +11,7 @@ class SelfAttentionBlock(nn.Module):
     def __init__(
         self,
         self_attention: SelfAttention,
-        embedding_dimension: int = (DEFAULT_EMBEDDING_DIMENSION),
+        embedding_dimension: int = DEFAULT_EMBEDDING_DIMENSION,
     ) -> None:
         super().__init__()
 
@@ -22,8 +22,12 @@ class SelfAttentionBlock(nn.Module):
     def forward(
         self,
         sequence: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        attention_output = self.self_attention(sequence)
+        attention_output = self.self_attention(
+            sequence,
+            attention_mask=attention_mask,
+        )
 
         residual = sequence + attention_output
 

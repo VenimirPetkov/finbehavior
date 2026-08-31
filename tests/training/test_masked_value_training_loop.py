@@ -64,3 +64,32 @@ def test_training_loop_rejects_empty_examples(
             examples=(),
             epoch_count=1,
         )
+
+
+def test_training_loop_rejects_invalid_batch_size(
+    masked_value_example_factory,
+    trainable_stub_model,
+):
+    example = masked_value_example_factory(1)
+
+    prediction_head = MaskedValuePredictionHead(
+        vocabulary_size=4,
+    )
+
+    optimizer = torch.optim.SGD(
+        list(trainable_stub_model.parameters()) + list(prediction_head.parameters()),
+        lr=0.1,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Batch size must be positive",
+    ):
+        train_masked_values(
+            model=trainable_stub_model,
+            prediction_head=prediction_head,
+            optimizer=optimizer,
+            examples=(example,),
+            epoch_count=1,
+            batch_size=0,
+        )

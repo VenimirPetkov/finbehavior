@@ -40,6 +40,15 @@ class EvaluationStubModel(nn.Module):
             dim=0,
         )
 
+    def encode_users(
+        self,
+        users: tuple[TensorizedUser, ...],
+    ) -> torch.Tensor:
+        return torch.stack(
+            tuple(self.encode_sequence(user) for user in users),
+            dim=0,
+        )
+
 
 def test_evaluate_masked_values_returns_average_loss(
     masked_value_example_factory,

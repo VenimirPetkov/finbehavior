@@ -1,6 +1,7 @@
 import math
 import random
 from datetime import datetime
+from time import perf_counter
 
 import torch
 
@@ -63,6 +64,8 @@ TRAIN_FRACTION = 0.8
 
 NUMBER_OF_BUCKETS = DEFAULT_NUMERICAL_BUCKET_COUNT
 EXAMPLES_PER_USER = 8
+BATCH_SIZE = 64
+TRAIN_BATCH_SHUFFLE_SEED = 321
 
 TRAIN_EPOCH_COUNT = 5
 LEARNING_RATE = 0.003
@@ -308,12 +311,14 @@ def run_experiment() -> None:
         model=model,
         prediction_head=prediction_head,
         examples=train_examples,
+        batch_size=BATCH_SIZE,
     )
 
     initial_validation_loss = evaluate_masked_values(
         model=model,
         prediction_head=prediction_head,
         examples=validation_examples,
+        batch_size=BATCH_SIZE,
     )
 
     train_losses = [initial_train_loss]
@@ -332,24 +337,42 @@ def run_experiment() -> None:
         1,
         TRAIN_EPOCH_COUNT + 1,
     ):
+        training_start = perf_counter()
+
         train_masked_values(
             model=model,
             prediction_head=prediction_head,
             optimizer=optimizer,
             examples=train_examples,
             epoch_count=1,
+            batch_size=BATCH_SIZE,
+            shuffle_seed=(TRAIN_BATCH_SHUFFLE_SEED + epoch),
         )
+
+        training_seconds = perf_counter() - training_start
+
+        evaluation_start = perf_counter()
 
         train_loss = evaluate_masked_values(
             model=model,
             prediction_head=prediction_head,
             examples=train_examples,
+            batch_size=BATCH_SIZE,
         )
 
         validation_loss = evaluate_masked_values(
             model=model,
             prediction_head=prediction_head,
             examples=validation_examples,
+            batch_size=BATCH_SIZE,
+        )
+        evaluation_seconds = perf_counter() - evaluation_start
+
+        print(
+            f"Timing: training="
+            f"{training_seconds:.2f}s, "
+            f"evaluation="
+            f"{evaluation_seconds:.2f}s"
         )
 
         train_losses.append(train_loss)
