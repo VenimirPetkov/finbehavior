@@ -26,6 +26,27 @@ def test_self_attention_preserves_sequence_shape():
     )
 
 
+def test_self_attention_preserves_batch_shape():
+    batch_size = 3
+    sequence_length = 5
+
+    attention = SelfAttention()
+
+    batch = torch.randn(
+        batch_size,
+        sequence_length,
+        DEFAULT_EMBEDDING_DIMENSION,
+    )
+
+    output = attention(batch)
+
+    assert output.shape == (
+        batch_size,
+        sequence_length,
+        DEFAULT_EMBEDDING_DIMENSION,
+    )
+
+
 def test_self_attention_has_learnable_projections():
     attention = SelfAttention()
 
