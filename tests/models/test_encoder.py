@@ -1,8 +1,40 @@
 import pytest
 import torch
 
-from finbehavior.models.config.embedding import DEFAULT_EMBEDDING_DIMENSION
-from finbehavior.models.encoder import TransformerEncoder
+from finbehavior.models.config.embedding import (
+    DEFAULT_EMBEDDING_DIMENSION,
+)
+from finbehavior.models.encoder import (
+    TransformerEncoder,
+)
+
+
+def test_transformer_encoder_preserves_sequence_shape(
+    transformer_block_factory,
+):
+    layer_count = 3
+
+    blocks = tuple(transformer_block_factory() for _ in range(layer_count))
+
+    encoder = TransformerEncoder(
+        blocks=blocks,
+    )
+
+    sequence_length = 4
+
+    sequence = torch.randn(
+        sequence_length,
+        DEFAULT_EMBEDDING_DIMENSION,
+    )
+
+    output = encoder(sequence)
+
+    assert output.shape == (
+        sequence_length,
+        DEFAULT_EMBEDDING_DIMENSION,
+    )
+
+    assert len(encoder.blocks) == layer_count
 
 
 def test_transformer_encoder_accepts_attention_mask(

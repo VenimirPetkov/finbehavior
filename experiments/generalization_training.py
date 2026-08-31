@@ -63,6 +63,7 @@ TRAIN_FRACTION = 0.8
 
 NUMBER_OF_BUCKETS = DEFAULT_NUMERICAL_BUCKET_COUNT
 EXAMPLES_PER_USER = 8
+BATCH_SIZE = 64
 
 TRAIN_EPOCH_COUNT = 5
 LEARNING_RATE = 0.003
@@ -308,12 +309,14 @@ def run_experiment() -> None:
         model=model,
         prediction_head=prediction_head,
         examples=train_examples,
+        batch_size=BATCH_SIZE,
     )
 
     initial_validation_loss = evaluate_masked_values(
         model=model,
         prediction_head=prediction_head,
         examples=validation_examples,
+        batch_size=BATCH_SIZE,
     )
 
     train_losses = [initial_train_loss]
@@ -338,18 +341,21 @@ def run_experiment() -> None:
             optimizer=optimizer,
             examples=train_examples,
             epoch_count=1,
+            batch_size=BATCH_SIZE,
         )
 
         train_loss = evaluate_masked_values(
             model=model,
             prediction_head=prediction_head,
             examples=train_examples,
+            batch_size=BATCH_SIZE,
         )
 
         validation_loss = evaluate_masked_values(
             model=model,
             prediction_head=prediction_head,
             examples=validation_examples,
+            batch_size=BATCH_SIZE,
         )
 
         train_losses.append(train_loss)
