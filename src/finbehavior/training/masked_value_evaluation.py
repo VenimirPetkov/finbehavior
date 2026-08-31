@@ -5,7 +5,12 @@ from finbehavior.models.masked_value_prediction_head import (
 )
 from finbehavior.models.model import FinBehaviorModel
 
-from .config.batch import DEFAULT_BATCH_SIZE
+from .config.batch import (
+    DEFAULT_BATCH_SIZE,
+)
+from .example_batching import (
+    build_length_aware_batches,
+)
 from .masked_value_batch_training_loss import (
     masked_value_batch_training_loss,
 )
@@ -25,22 +30,22 @@ def evaluate_masked_values(
         raise ValueError("Batch size must be positive")
 
     model_was_training = model.training
+
     prediction_head_was_training = prediction_head.training
 
     model.eval()
     prediction_head.eval()
 
+    batches = build_length_aware_batches(
+        examples=examples,
+        batch_size=batch_size,
+    )
+
     total_loss = 0.0
 
     try:
         with torch.no_grad():
-            for start_index in range(
-                0,
-                len(examples),
-                batch_size,
-            ):
-                batch = examples[start_index : start_index + batch_size]
-
+            for batch in batches:
                 loss = masked_value_batch_training_loss(
                     model=model,
                     prediction_head=prediction_head,

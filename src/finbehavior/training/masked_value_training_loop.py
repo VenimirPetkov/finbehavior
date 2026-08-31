@@ -5,7 +5,13 @@ from finbehavior.models.masked_value_prediction_head import (
 )
 from finbehavior.models.model import FinBehaviorModel
 
-from .config.batch import DEFAULT_BATCH_SIZE
+from .config.batch import (
+    DEFAULT_BATCH_SHUFFLE_SEED,
+    DEFAULT_BATCH_SIZE,
+)
+from .example_batching import (
+    build_length_aware_batches,
+)
 from .masked_value_batch_training_step import (
     masked_value_batch_training_step,
 )
@@ -19,6 +25,7 @@ def train_masked_values(
     examples: tuple[MaskedValueExample, ...],
     epoch_count: int,
     batch_size: int = DEFAULT_BATCH_SIZE,
+    shuffle_seed: int = DEFAULT_BATCH_SHUFFLE_SEED,
 ) -> tuple[float, ...]:
     if not examples:
         raise ValueError("Training examples must not be empty")
@@ -34,16 +41,17 @@ def train_masked_values(
 
     epoch_losses = []
 
-    for _ in range(epoch_count):
+    for epoch_index in range(epoch_count):
+        batches = build_length_aware_batches(
+            examples=examples,
+            batch_size=batch_size,
+            shuffle=True,
+            seed=(shuffle_seed + epoch_index),
+        )
+
         total_loss = 0.0
 
-        for start_index in range(
-            0,
-            len(examples),
-            batch_size,
-        ):
-            batch = examples[start_index : start_index + batch_size]
-
+        for batch in batches:
             loss = masked_value_batch_training_step(
                 model=model,
                 prediction_head=prediction_head,
