@@ -1,10 +1,9 @@
 import math
 import random
 from datetime import datetime
+from time import perf_counter
 
 import torch
-
-from time import perf_counter
 
 from finbehavior.data.generators.dataset import (
     generate_dataset,
