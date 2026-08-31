@@ -5,8 +5,9 @@ from finbehavior.models.masked_value_prediction_head import (
 )
 from finbehavior.models.model import FinBehaviorModel
 
-from .masked_value_training_step import (
-    masked_value_training_step,
+from .config.batch import DEFAULT_BATCH_SIZE
+from .masked_value_batch_training_step import (
+    masked_value_batch_training_step,
 )
 from .masking import MaskedValueExample
 
@@ -17,12 +18,16 @@ def train_masked_values(
     optimizer: torch.optim.Optimizer,
     examples: tuple[MaskedValueExample, ...],
     epoch_count: int,
+    batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> tuple[float, ...]:
     if not examples:
         raise ValueError("Training examples must not be empty")
 
     if epoch_count <= 0:
         raise ValueError("Epoch count must be positive")
+
+    if batch_size <= 0:
+        raise ValueError("Batch size must be positive")
 
     model.train()
     prediction_head.train()
@@ -32,15 +37,21 @@ def train_masked_values(
     for _ in range(epoch_count):
         total_loss = 0.0
 
-        for example in examples:
-            loss = masked_value_training_step(
+        for start_index in range(
+            0,
+            len(examples),
+            batch_size,
+        ):
+            batch = examples[start_index : start_index + batch_size]
+
+            loss = masked_value_batch_training_step(
                 model=model,
                 prediction_head=prediction_head,
                 optimizer=optimizer,
-                example=example,
+                examples=batch,
             )
 
-            total_loss += loss.item()
+            total_loss += loss.item() * len(batch)
 
         average_loss = total_loss / len(examples)
 

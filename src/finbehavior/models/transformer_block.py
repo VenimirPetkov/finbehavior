@@ -5,7 +5,9 @@ from .config.embedding import (
     DEFAULT_EMBEDDING_DIMENSION,
 )
 from .feed_forward import FeedForward
-from .self_attention_block import SelfAttentionBlock
+from .self_attention_block import (
+    SelfAttentionBlock,
+)
 
 
 class TransformerBlock(nn.Module):
@@ -13,7 +15,7 @@ class TransformerBlock(nn.Module):
         self,
         self_attention_block: SelfAttentionBlock,
         feed_forward: FeedForward,
-        embedding_dimension: int = (DEFAULT_EMBEDDING_DIMENSION),
+        embedding_dimension: int = DEFAULT_EMBEDDING_DIMENSION,
     ) -> None:
         super().__init__()
 
@@ -26,8 +28,12 @@ class TransformerBlock(nn.Module):
     def forward(
         self,
         sequence: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        attention_output = self.self_attention_block(sequence)
+        attention_output = self.self_attention_block(
+            sequence,
+            attention_mask=attention_mask,
+        )
 
         feed_forward_output = self.feed_forward(attention_output)
 

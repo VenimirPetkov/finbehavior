@@ -4,16 +4,26 @@ import pytest
 import torch
 from torch import nn
 
-from finbehavior.models.config.embedding import DEFAULT_EMBEDDING_DIMENSION
+from finbehavior.models.config.embedding import (
+    DEFAULT_EMBEDDING_DIMENSION,
+)
 from finbehavior.tensorization.types import (
     TensorizedEvent,
     TensorizedProfile,
     TensorizedUser,
 )
-from finbehavior.tokenization.config.temporal import CALENDAR_FEATURE_DIMENSION
-from finbehavior.training.masking import MaskedValueExample, mask_event_value
+from finbehavior.tokenization.config.temporal import (
+    CALENDAR_FEATURE_DIMENSION,
+)
+from finbehavior.training.masking import (
+    MaskedValueExample,
+    mask_event_value,
+)
 
-MaskedValueExampleFactory = Callable[[int], MaskedValueExample]
+MaskedValueExampleFactory = Callable[
+    [int],
+    MaskedValueExample,
+]
 
 
 class TrainableStubFinBehaviorModel(nn.Module):
@@ -39,6 +49,15 @@ class TrainableStubFinBehaviorModel(nn.Module):
                 profile_representation,
                 self.event_representation,
             ),
+            dim=0,
+        )
+
+    def encode_users(
+        self,
+        users: tuple[TensorizedUser, ...],
+    ) -> torch.Tensor:
+        return torch.stack(
+            tuple(self.encode_sequence(user) for user in users),
             dim=0,
         )
 

@@ -1,7 +1,9 @@
 import torch
 from torch import nn
 
-from .transformer_block import TransformerBlock
+from .transformer_block import (
+    TransformerBlock,
+)
 
 
 class TransformerEncoder(nn.Module):
@@ -12,17 +14,21 @@ class TransformerEncoder(nn.Module):
         super().__init__()
 
         if not blocks:
-            raise ValueError("Encoder must contain at least one transformer block")
+            raise ValueError("Encoder must contain " "at least one transformer block")
 
         self.blocks = nn.ModuleList(blocks)
 
     def forward(
         self,
         sequence: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         encoded = sequence
 
         for block in self.blocks:
-            encoded = block(encoded)
+            encoded = block(
+                encoded,
+                attention_mask=attention_mask,
+            )
 
         return encoded
