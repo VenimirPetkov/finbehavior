@@ -9,6 +9,7 @@ from finbehavior.models.masked_value_prediction_head import (
     MaskedValuePredictionHead,
 )
 from finbehavior.persistence.checkpoint import (
+    checkpoint_exists,
     load_checkpoint,
     save_checkpoint,
 )
@@ -22,7 +23,7 @@ from finbehavior.tokenization.vocabulary import (
 
 def test_checkpoint_round_trip(
     tmp_path: Path,
-):
+) -> None:
     torch.manual_seed(42)
 
     vocabulary = Vocabulary()
@@ -58,19 +59,31 @@ def test_checkpoint_round_trip(
         vocabulary_size=len(vocabulary),
     )
 
+    optimizer = torch.optim.AdamW(
+        list(model.parameters()) + list(prediction_head.parameters()),
+        lr=0.003,
+    )
+
     checkpoint_directory = tmp_path / "checkpoint"
+
+    assert not checkpoint_exists(checkpoint_directory)
 
     save_checkpoint(
         directory=checkpoint_directory,
         model=model,
         prediction_head=prediction_head,
+        optimizer=optimizer,
         vocabulary=vocabulary,
         bucketizer=bucketizer,
         epoch=5,
         validation_loss=2.4135,
         top_1_accuracy=0.29,
         top_5_accuracy=0.624,
+        best_validation_epoch=5,
+        best_validation_loss=2.4135,
     )
+
+    assert checkpoint_exists(checkpoint_directory)
 
     loaded = load_checkpoint(
         directory=checkpoint_directory,
@@ -78,9 +91,16 @@ def test_checkpoint_round_trip(
     )
 
     assert loaded.epoch == 5
+
     assert loaded.validation_loss == 2.4135
+
     assert loaded.top_1_accuracy == 0.29
+
     assert loaded.top_5_accuracy == 0.624
+
+    assert loaded.best_validation_epoch == 5
+
+    assert loaded.best_validation_loss == 2.4135
 
     assert loaded.vocabulary.get_tokens() == vocabulary.get_tokens()
 
@@ -109,3 +129,14 @@ def test_checkpoint_round_trip(
             original_head_state[name],
             loaded_head_state[name],
         )
+
+    original_optimizer_state = optimizer.state_dict()
+
+    loaded_optimizer_state = loaded.optimizer_state_dict
+
+    assert (
+        original_optimizer_state["param_groups"]
+        == loaded_optimizer_state["param_groups"]
+    )
+
+    assert loaded_optimizer_state["param_groups"][0]["lr"] == 0.003

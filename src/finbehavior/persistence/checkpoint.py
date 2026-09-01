@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from math import isfinite
 from pathlib import Path
+from typing import Any
 
 import torch
 
@@ -30,7 +31,7 @@ from finbehavior.tokenization.vocabulary import (
     Vocabulary,
 )
 
-CHECKPOINT_VERSION = 1
+CHECKPOINT_VERSION = 2
 
 MODEL_STATE_FILENAME = "model.pt"
 TOKENIZER_STATE_FILENAME = "tokenizer.json"
@@ -42,30 +43,57 @@ class LoadedCheckpoint:
     prediction_head: MaskedValuePredictionHead
     vocabulary: Vocabulary
     bucketizer: QuantileBucketizer
+
+    optimizer_state_dict: dict[str, Any]
+
     epoch: int
+
     validation_loss: float
     top_1_accuracy: float
     top_5_accuracy: float
+
+    best_validation_epoch: int
+    best_validation_loss: float
+
+
+def checkpoint_exists(
+    directory: Path,
+) -> bool:
+    return (directory / MODEL_STATE_FILENAME).is_file() and (
+        directory / TOKENIZER_STATE_FILENAME
+    ).is_file()
 
 
 def save_checkpoint(
     directory: Path,
     model: FinBehaviorModel,
     prediction_head: MaskedValuePredictionHead,
+    optimizer: torch.optim.Optimizer,
     vocabulary: Vocabulary,
     bucketizer: QuantileBucketizer,
     epoch: int,
     validation_loss: float,
     top_1_accuracy: float,
     top_5_accuracy: float,
+    best_validation_epoch: int,
+    best_validation_loss: float,
     embedding_dimension: int = DEFAULT_EMBEDDING_DIMENSION,
     transformer_block_count: int = DEFAULT_TRANSFORMER_BLOCK_COUNT,
 ) -> None:
     if epoch < 0:
         raise ValueError("Epoch must not be negative")
 
+    if best_validation_epoch < 0:
+        raise ValueError("Best validation epoch must not be negative")
+
+    if best_validation_epoch > epoch:
+        raise ValueError("Best validation epoch cannot be after current epoch")
+
     if not isfinite(validation_loss):
         raise ValueError("Validation loss must be finite")
+
+    if not isfinite(best_validation_loss):
+        raise ValueError("Best validation loss must be finite")
 
     if not 0.0 <= top_1_accuracy <= 1.0:
         raise ValueError("Top-1 accuracy must be between 0 and 1")
@@ -82,17 +110,22 @@ def save_checkpoint(
         "version": CHECKPOINT_VERSION,
         "model_config": {
             "vocabulary_size": len(vocabulary),
-            "embedding_dimension": embedding_dimension,
+            "embedding_dimension": (embedding_dimension),
             "transformer_block_count": (transformer_block_count),
         },
-        "metrics": {
+        "training_state": {
             "epoch": epoch,
+            "best_validation_epoch": (best_validation_epoch),
+            "best_validation_loss": (best_validation_loss),
+        },
+        "metrics": {
             "validation_loss": validation_loss,
             "top_1_accuracy": top_1_accuracy,
             "top_5_accuracy": top_5_accuracy,
         },
-        "model_state_dict": model.state_dict(),
+        "model_state_dict": (model.state_dict()),
         "prediction_head_state_dict": (prediction_head.state_dict()),
+        "optimizer_state_dict": (optimizer.state_dict()),
     }
 
     torch.save(
@@ -101,7 +134,7 @@ def save_checkpoint(
     )
 
     save_tokenizer(
-        path=directory / TOKENIZER_STATE_FILENAME,
+        path=(directory / TOKENIZER_STATE_FILENAME),
         vocabulary=vocabulary,
         bucketizer=bucketizer,
     )
@@ -122,7 +155,7 @@ def load_checkpoint(
     version = state["version"]
 
     if version != CHECKPOINT_VERSION:
-        raise ValueError(f"Unsupported checkpoint version: {version}")
+        raise ValueError(f"Unsupported checkpoint version: " f"{version}")
 
     model_config = state["model_config"]
 
@@ -130,7 +163,7 @@ def load_checkpoint(
 
     if checkpoint_vocabulary_size != len(vocabulary):
         raise ValueError(
-            "Checkpoint vocabulary size does not match " "the saved tokenizer"
+            "Checkpoint vocabulary size does not " "match the saved tokenizer"
         )
 
     embedding_dimension = model_config["embedding_dimension"]
@@ -139,18 +172,20 @@ def load_checkpoint(
 
     model = build_finbehavior_model(
         vocabulary_size=len(vocabulary),
-        embedding_dimension=embedding_dimension,
+        embedding_dimension=(embedding_dimension),
         transformer_block_count=(transformer_block_count),
     ).to(device)
 
     prediction_head = MaskedValuePredictionHead(
         vocabulary_size=len(vocabulary),
-        embedding_dimension=embedding_dimension,
+        embedding_dimension=(embedding_dimension),
     ).to(device)
 
     model.load_state_dict(state["model_state_dict"])
 
     prediction_head.load_state_dict(state["prediction_head_state_dict"])
+
+    training_state = state["training_state"]
 
     metrics = state["metrics"]
 
@@ -159,8 +194,11 @@ def load_checkpoint(
         prediction_head=prediction_head,
         vocabulary=vocabulary,
         bucketizer=bucketizer,
-        epoch=metrics["epoch"],
+        optimizer_state_dict=state["optimizer_state_dict"],
+        epoch=training_state["epoch"],
         validation_loss=metrics["validation_loss"],
         top_1_accuracy=metrics["top_1_accuracy"],
         top_5_accuracy=metrics["top_5_accuracy"],
+        best_validation_epoch=(training_state["best_validation_epoch"]),
+        best_validation_loss=(training_state["best_validation_loss"]),
     )
