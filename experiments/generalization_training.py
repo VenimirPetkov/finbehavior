@@ -1,6 +1,7 @@
 import math
 import random
 from datetime import datetime
+from pathlib import Path
 from time import perf_counter
 
 import torch
@@ -11,11 +12,18 @@ from finbehavior.data.generators.dataset import (
 from finbehavior.domain.record import (
     UserRecord,
 )
+from finbehavior.evaluation.masked_value_metrics import (
+    MaskedValueMetrics,
+    evaluate_masked_value_metrics,
+)
 from finbehavior.models.factory import (
     build_finbehavior_model,
 )
 from finbehavior.models.masked_value_prediction_head import (
     MaskedValuePredictionHead,
+)
+from finbehavior.persistence.checkpoint import (
+    save_checkpoint,
 )
 from finbehavior.tensorization.device import (
     move_user_to_device,
@@ -59,11 +67,6 @@ from finbehavior.training.user_split import (
     split_user_records,
 )
 
-from finbehavior.evaluation.masked_value_metrics import (
-    MaskedValueMetrics,
-    evaluate_masked_value_metrics,
-)
-
 DATASET_USER_COUNT = 1024
 TRAIN_FRACTION = 0.8
 
@@ -72,13 +75,15 @@ EXAMPLES_PER_USER = 8
 BATCH_SIZE = 64
 TRAIN_BATCH_SHUFFLE_SEED = 321
 
-TRAIN_EPOCH_COUNT = 5
+TRAIN_EPOCH_COUNT = 1
 LEARNING_RATE = 0.003
 
 DATASET_SEED = 42
 TRAIN_EXAMPLE_SELECTION_SEED = 123
 VALIDATION_EXAMPLE_SELECTION_SEED = 124
 TORCH_SEED = 0
+
+CHECKPOINT_DIRECTORY = Path("checkpoints/generalization_best")
 
 
 def get_device() -> torch.device:
@@ -178,7 +183,7 @@ def print_dataset_summary(
     validation_example_count: int,
 ) -> None:
     print()
-    print(f"Train users: " f"{train_user_count}")
+    print(f"Train users: {train_user_count}")
     print(f"Validation users: " f"{validation_user_count}")
     print(f"Train examples: " f"{train_example_count}")
     print(f"Validation examples: " f"{validation_example_count}")
@@ -237,7 +242,7 @@ def run_experiment() -> None:
         seed=DATASET_SEED,
     )
 
-    print("Fitting tokenizer " "on training users...")
+    print("Fitting tokenizer on training users...")
 
     vocabulary = build_vocabulary()
 
@@ -286,7 +291,7 @@ def run_experiment() -> None:
         users=validation_users,
         mask_token_id=mask_token_id,
         examples_per_user=EXAMPLES_PER_USER,
-        seed=VALIDATION_EXAMPLE_SELECTION_SEED,
+        seed=(VALIDATION_EXAMPLE_SELECTION_SEED),
     )
 
     train_user_ids = {example.user.user_id for example in train_examples}
@@ -338,12 +343,27 @@ def run_experiment() -> None:
 
     validation_losses = [initial_validation_loss]
 
+    best_validation_epoch = 0
+    best_validation_loss = initial_validation_loss
+
+    save_checkpoint(
+        directory=CHECKPOINT_DIRECTORY,
+        model=model,
+        prediction_head=prediction_head,
+        vocabulary=vocabulary,
+        bucketizer=bucketizer,
+        epoch=0,
+        validation_loss=(initial_validation_metrics.loss),
+        top_1_accuracy=(initial_validation_metrics.top_1_accuracy),
+        top_5_accuracy=(initial_validation_metrics.top_5_accuracy),
+    )
+
     print_loss_header()
 
     print_epoch_metrics(
         epoch=0,
         train_loss=initial_train_loss,
-        validation_metrics=initial_validation_metrics,
+        validation_metrics=(initial_validation_metrics),
     )
 
     for epoch in range(
@@ -376,11 +396,28 @@ def run_experiment() -> None:
         validation_metrics = evaluate_masked_value_metrics(
             model=model,
             prediction_head=prediction_head,
-            examples=validation_examples,
+            examples=(validation_examples),
             batch_size=BATCH_SIZE,
         )
 
         validation_loss = validation_metrics.loss
+
+        if validation_loss < best_validation_loss:
+            best_validation_loss = validation_loss
+
+            best_validation_epoch = epoch
+
+            save_checkpoint(
+                directory=(CHECKPOINT_DIRECTORY),
+                model=model,
+                prediction_head=(prediction_head),
+                vocabulary=vocabulary,
+                bucketizer=bucketizer,
+                epoch=epoch,
+                validation_loss=(validation_metrics.loss),
+                top_1_accuracy=(validation_metrics.top_1_accuracy),
+                top_5_accuracy=(validation_metrics.top_5_accuracy),
+            )
 
         evaluation_seconds = perf_counter() - evaluation_start
 
@@ -398,17 +435,13 @@ def run_experiment() -> None:
         print_epoch_metrics(
             epoch=epoch,
             train_loss=train_loss,
-            validation_metrics=validation_metrics,
+            validation_metrics=(validation_metrics),
         )
-
-    best_validation_epoch = min(
-        range(len(validation_losses)),
-        key=lambda index: (validation_losses[index]),
-    )
 
     print()
     print(f"Best validation epoch: " f"{best_validation_epoch}")
-    print(f"Best validation loss: " f"{validation_losses[best_validation_epoch]:.4f}")
+    print(f"Best validation loss: " f"{best_validation_loss:.4f}")
+    print(f"Checkpoint: " f"{CHECKPOINT_DIRECTORY}")
 
     assert len(train_losses) == (TRAIN_EPOCH_COUNT + 1)
 
