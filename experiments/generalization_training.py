@@ -59,6 +59,11 @@ from finbehavior.training.user_split import (
     split_user_records,
 )
 
+from finbehavior.evaluation.masked_value_metrics import (
+    MaskedValueMetrics,
+    evaluate_masked_value_metrics,
+)
+
 DATASET_USER_COUNT = 1024
 TRAIN_FRACTION = 0.8
 
@@ -181,16 +186,22 @@ def print_dataset_summary(
 
 def print_loss_header() -> None:
     print()
-    print("Epoch | Train Loss | Validation Loss")
-    print("------------------------------------")
+    print("Epoch | Train Loss | Validation Loss | " "Top-1 | Top-5")
+    print("-----------------------------------------------------")
 
 
-def print_epoch_loss(
+def print_epoch_metrics(
     epoch: int,
     train_loss: float,
-    validation_loss: float,
+    validation_metrics: MaskedValueMetrics,
 ) -> None:
-    print(f"{epoch:>5} | " f"{train_loss:>10.4f} | " f"{validation_loss:>15.4f}")
+    print(
+        f"{epoch:>5} | "
+        f"{train_loss:>10.4f} | "
+        f"{validation_metrics.loss:>15.4f} | "
+        f"{validation_metrics.top_1_accuracy * 100:>5.1f}% | "
+        f"{validation_metrics.top_5_accuracy * 100:>5.1f}%"
+    )
 
 
 def run_experiment() -> None:
@@ -314,12 +325,14 @@ def run_experiment() -> None:
         batch_size=BATCH_SIZE,
     )
 
-    initial_validation_loss = evaluate_masked_values(
+    initial_validation_metrics = evaluate_masked_value_metrics(
         model=model,
         prediction_head=prediction_head,
         examples=validation_examples,
         batch_size=BATCH_SIZE,
     )
+
+    initial_validation_loss = initial_validation_metrics.loss
 
     train_losses = [initial_train_loss]
 
@@ -327,10 +340,10 @@ def run_experiment() -> None:
 
     print_loss_header()
 
-    print_epoch_loss(
+    print_epoch_metrics(
         epoch=0,
         train_loss=initial_train_loss,
-        validation_loss=(initial_validation_loss),
+        validation_metrics=initial_validation_metrics,
     )
 
     for epoch in range(
@@ -360,12 +373,15 @@ def run_experiment() -> None:
             batch_size=BATCH_SIZE,
         )
 
-        validation_loss = evaluate_masked_values(
+        validation_metrics = evaluate_masked_value_metrics(
             model=model,
             prediction_head=prediction_head,
             examples=validation_examples,
             batch_size=BATCH_SIZE,
         )
+
+        validation_loss = validation_metrics.loss
+
         evaluation_seconds = perf_counter() - evaluation_start
 
         print(
@@ -379,10 +395,10 @@ def run_experiment() -> None:
 
         validation_losses.append(validation_loss)
 
-        print_epoch_loss(
+        print_epoch_metrics(
             epoch=epoch,
             train_loss=train_loss,
-            validation_loss=validation_loss,
+            validation_metrics=validation_metrics,
         )
 
     best_validation_epoch = min(
