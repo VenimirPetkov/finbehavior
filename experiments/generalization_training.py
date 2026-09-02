@@ -180,6 +180,19 @@ def build_sampled_examples(
     return tuple(examples)
 
 
+def build_training_examples_for_epoch(
+    users: tuple[TensorizedUser, ...],
+    mask_token_id: int,
+    epoch: int,
+) -> tuple[MaskedValueExample, ...]:
+    return build_sampled_examples(
+        users=users,
+        mask_token_id=mask_token_id,
+        examples_per_user=EXAMPLES_PER_USER,
+        seed=(TRAIN_EXAMPLE_SELECTION_SEED + epoch),
+    )
+
+
 def print_dataset_summary(
     train_user_count: int,
     validation_user_count: int,
@@ -189,7 +202,7 @@ def print_dataset_summary(
     print()
     print(f"Train users: " f"{train_user_count}")
     print(f"Validation users: " f"{validation_user_count}")
-    print(f"Train examples: " f"{train_example_count}")
+    print(f"Train examples per epoch: " f"{train_example_count}")
     print(f"Validation examples: " f"{validation_example_count}")
 
 
@@ -368,16 +381,8 @@ def run_experiment() -> None:
 
     mask_token_id = vocabulary.get_id(MASK_TOKEN)
 
-    print("Sampling training examples...")
-
-    train_examples = build_sampled_examples(
-        users=train_users,
-        mask_token_id=mask_token_id,
-        examples_per_user=(EXAMPLES_PER_USER),
-        seed=(TRAIN_EXAMPLE_SELECTION_SEED),
-    )
-
-    print("Sampling validation examples...")
+    print()
+    print("Building fixed validation masks...")
 
     validation_examples = build_sampled_examples(
         users=validation_users,
@@ -386,7 +391,13 @@ def run_experiment() -> None:
         seed=(VALIDATION_EXAMPLE_SELECTION_SEED),
     )
 
-    train_user_ids = {example.user.user_id for example in train_examples}
+    current_train_examples = build_training_examples_for_epoch(
+        users=train_users,
+        mask_token_id=mask_token_id,
+        epoch=start_epoch,
+    )
+
+    train_user_ids = {example.user.user_id for example in current_train_examples}
 
     validation_user_ids = {example.user.user_id for example in validation_examples}
 
@@ -395,7 +406,7 @@ def run_experiment() -> None:
     print_dataset_summary(
         train_user_count=len(split.train_records),
         validation_user_count=len(split.validation_records),
-        train_example_count=len(train_examples),
+        train_example_count=len(current_train_examples),
         validation_example_count=len(validation_examples),
     )
 
@@ -405,7 +416,7 @@ def run_experiment() -> None:
     initial_train_loss = evaluate_masked_values(
         model=model,
         prediction_head=(prediction_head),
-        examples=train_examples,
+        examples=(current_train_examples),
         batch_size=BATCH_SIZE,
     )
 
@@ -465,13 +476,22 @@ def run_experiment() -> None:
     ):
         epoch = start_epoch + run_epoch
 
+        print()
+        print(f"Sampling new training masks " f"for epoch {epoch}...")
+
+        epoch_train_examples = build_training_examples_for_epoch(
+            users=train_users,
+            mask_token_id=mask_token_id,
+            epoch=epoch,
+        )
+
         training_start = perf_counter()
 
         train_masked_values(
             model=model,
             prediction_head=(prediction_head),
             optimizer=optimizer,
-            examples=train_examples,
+            examples=(epoch_train_examples),
             epoch_count=1,
             batch_size=BATCH_SIZE,
             shuffle_seed=(TRAIN_BATCH_SHUFFLE_SEED + epoch),
@@ -484,7 +504,7 @@ def run_experiment() -> None:
         train_loss = evaluate_masked_values(
             model=model,
             prediction_head=(prediction_head),
-            examples=train_examples,
+            examples=(epoch_train_examples),
             batch_size=BATCH_SIZE,
         )
 
