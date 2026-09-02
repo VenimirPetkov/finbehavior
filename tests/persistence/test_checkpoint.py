@@ -59,10 +59,22 @@ def test_checkpoint_round_trip(
         vocabulary_size=len(vocabulary),
     )
 
+    parameters = list(model.parameters()) + list(prediction_head.parameters())
+
     optimizer = torch.optim.AdamW(
-        list(model.parameters()) + list(prediction_head.parameters()),
+        parameters,
         lr=0.003,
     )
+
+    loss = sum(parameter.square().mean() for parameter in parameters)
+
+    loss.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+
+    original_optimizer_state = optimizer.state_dict()
+
+    assert original_optimizer_state["state"]
 
     checkpoint_directory = tmp_path / "checkpoint"
 
@@ -91,11 +103,8 @@ def test_checkpoint_round_trip(
     )
 
     assert loaded.epoch == 5
-
     assert loaded.validation_loss == 2.4135
-
     assert loaded.top_1_accuracy == 0.29
-
     assert loaded.top_5_accuracy == 0.624
 
     assert loaded.best_validation_epoch == 5
@@ -130,8 +139,6 @@ def test_checkpoint_round_trip(
             loaded_head_state[name],
         )
 
-    original_optimizer_state = optimizer.state_dict()
-
     loaded_optimizer_state = loaded.optimizer_state_dict
 
     assert (
@@ -139,4 +146,23 @@ def test_checkpoint_round_trip(
         == loaded_optimizer_state["param_groups"]
     )
 
-    assert loaded_optimizer_state["param_groups"][0]["lr"] == 0.003
+    assert (
+        original_optimizer_state["state"].keys()
+        == loaded_optimizer_state["state"].keys()
+    )
+
+    for parameter_id, original_state in original_optimizer_state["state"].items():
+        loaded_state = loaded_optimizer_state["state"][parameter_id]
+
+        assert original_state.keys() == loaded_state.keys()
+
+        for key, original_value in original_state.items():
+            loaded_value = loaded_state[key]
+
+            if torch.is_tensor(original_value):
+                assert torch.equal(
+                    original_value,
+                    loaded_value,
+                )
+            else:
+                assert original_value == loaded_value
