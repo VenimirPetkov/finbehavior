@@ -15,6 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "black>=24.0",
     "pytest>=8.0",
 ]
 
@@ -22,7 +23,6 @@ dev = [
 where = ["src"]
 
 [tool.pytest.ini_options]
-addopts = "--basetemp=.pytest-tmp"
 testpaths = ["tests"]
 
 [tool.black]

@@ -2,7 +2,10 @@ from datetime import datetime
 
 from finbehavior.data.behavior_profile import BehaviorProfile
 from finbehavior.data.serialization.user import (
+    synthetic_user_from_dict,
     synthetic_user_to_dict,
+    user_record_from_dict,
+    user_record_to_dict,
 )
 from finbehavior.data.synthetic_user import SyntheticUser
 from finbehavior.domain.enums import EventSource
@@ -81,3 +84,51 @@ def test_synthetic_user_to_dict():
             "currency": "EUR",
         },
     }
+
+
+def test_synthetic_user_dict_round_trip():
+    user = SyntheticUser(
+        behavior=BehaviorProfile(
+            income_level=0.7,
+            spending_tendency=0.8,
+            travel_tendency=0.5,
+            investing_tendency=0.6,
+            app_activity=0.9,
+            communication_engagement=0.7,
+        ),
+        record=UserRecord(
+            user_id=42,
+            evaluation_point=datetime(2026, 7, 1),
+            profile=ProfileState(fields={"plan": "premium"}),
+            events=[
+                Event(
+                    created=datetime(2026, 1, 15, 14, 30),
+                    source=EventSource.APP,
+                    fields={"screen": "home", "action": "opened"},
+                )
+            ],
+        ),
+    )
+
+    restored = synthetic_user_from_dict(synthetic_user_to_dict(user))
+
+    assert restored == user
+
+
+def test_user_record_dict_round_trip():
+    record = UserRecord(
+        user_id=7,
+        evaluation_point=datetime(2026, 7, 1, 12, 0),
+        profile=ProfileState(fields={"region": "BG"}),
+        events=[
+            Event(
+                created=datetime(2026, 6, 1, 10, 0),
+                source=EventSource.COMMUNICATION,
+                fields={"channel": "email", "engagement": "opened"},
+            )
+        ],
+    )
+
+    restored = user_record_from_dict(user_record_to_dict(record))
+
+    assert restored == record

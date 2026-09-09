@@ -22,7 +22,14 @@ def masked_value_training_loss(
 
     event_representation = encoded_sequence[event_sequence_index]
 
-    logits = prediction_head(event_representation)
+    target_key_id = example.user.events[example.event_index].key_ids[
+        example.field_index
+    ]
+
+    logits = prediction_head(
+        event_representation,
+        key_ids=target_key_id,
+    )
 
     return masked_value_loss(
         logits,

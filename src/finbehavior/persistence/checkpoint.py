@@ -1,7 +1,9 @@
+import os
 from dataclasses import dataclass
 from math import isfinite
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import torch
 
@@ -24,14 +26,15 @@ from finbehavior.tokenization.numerical import (
     QuantileBucketizer,
 )
 from finbehavior.tokenization.persistence import (
-    load_tokenizer,
     save_tokenizer,
+    tokenizer_from_state,
+    tokenizer_to_state,
 )
 from finbehavior.tokenization.vocabulary import (
     Vocabulary,
 )
 
-CHECKPOINT_VERSION = 2
+CHECKPOINT_VERSION = 3
 
 MODEL_STATE_FILENAME = "model.pt"
 TOKENIZER_STATE_FILENAME = "tokenizer.json"
@@ -59,9 +62,7 @@ class LoadedCheckpoint:
 def checkpoint_exists(
     directory: Path,
 ) -> bool:
-    return (directory / MODEL_STATE_FILENAME).is_file() and (
-        directory / TOKENIZER_STATE_FILENAME
-    ).is_file()
+    return (directory / MODEL_STATE_FILENAME).is_file()
 
 
 def save_checkpoint(
@@ -108,10 +109,14 @@ def save_checkpoint(
 
     state = {
         "version": CHECKPOINT_VERSION,
+        "tokenizer_state": tokenizer_to_state(vocabulary, bucketizer),
         "model_config": {
             "vocabulary_size": len(vocabulary),
             "embedding_dimension": (embedding_dimension),
             "transformer_block_count": (transformer_block_count),
+            "allowed_token_ids_by_key_id": (
+                prediction_head.get_allowed_token_ids_by_key_id()
+            ),
         },
         "training_state": {
             "epoch": epoch,
@@ -128,24 +133,38 @@ def save_checkpoint(
         "optimizer_state_dict": (optimizer.state_dict()),
     }
 
-    torch.save(
-        state,
-        directory / MODEL_STATE_FILENAME,
+    model_path = directory / MODEL_STATE_FILENAME
+    tokenizer_path = directory / TOKENIZER_STATE_FILENAME
+
+    unique_suffix = uuid4().hex
+    temporary_model_path = directory / f".{MODEL_STATE_FILENAME}.{unique_suffix}.tmp"
+    temporary_tokenizer_path = (
+        directory / f".{TOKENIZER_STATE_FILENAME}.{unique_suffix}.tmp"
     )
 
-    save_tokenizer(
-        path=(directory / TOKENIZER_STATE_FILENAME),
-        vocabulary=vocabulary,
-        bucketizer=bucketizer,
-    )
+    try:
+        torch.save(
+            state,
+            temporary_model_path,
+        )
+
+        save_tokenizer(
+            path=temporary_tokenizer_path,
+            vocabulary=vocabulary,
+            bucketizer=bucketizer,
+        )
+
+        os.replace(temporary_tokenizer_path, tokenizer_path)
+        os.replace(temporary_model_path, model_path)
+    finally:
+        temporary_model_path.unlink(missing_ok=True)
+        temporary_tokenizer_path.unlink(missing_ok=True)
 
 
 def load_checkpoint(
     directory: Path,
     device: torch.device,
 ) -> LoadedCheckpoint:
-    vocabulary, bucketizer = load_tokenizer(directory / TOKENIZER_STATE_FILENAME)
-
     state = torch.load(
         directory / MODEL_STATE_FILENAME,
         map_location=device,
@@ -156,6 +175,8 @@ def load_checkpoint(
 
     if version != CHECKPOINT_VERSION:
         raise ValueError(f"Unsupported checkpoint version: " f"{version}")
+
+    vocabulary, bucketizer = tokenizer_from_state(state["tokenizer_state"])
 
     model_config = state["model_config"]
 
@@ -179,6 +200,7 @@ def load_checkpoint(
     prediction_head = MaskedValuePredictionHead(
         vocabulary_size=len(vocabulary),
         embedding_dimension=(embedding_dimension),
+        allowed_token_ids_by_key_id=(model_config["allowed_token_ids_by_key_id"]),
     ).to(device)
 
     model.load_state_dict(state["model_state_dict"])

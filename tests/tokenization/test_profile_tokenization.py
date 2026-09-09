@@ -5,6 +5,7 @@ from finbehavior.tokenization.profile import (
     tokenize_profile,
 )
 from finbehavior.tokenization.special_tokens import (
+    UNK_TOKEN,
     USR_TOKEN,
 )
 from finbehavior.tokenization.vocabulary import (
@@ -93,3 +94,12 @@ def test_rejects_unknown_profile_field():
             profile=profile,
             vocabulary=vocabulary,
         )
+
+
+def test_cross_field_profile_value_is_encoded_as_unknown():
+    vocabulary = build_vocabulary()
+    profile = ProfileState(fields={"plan": "EUR"})
+
+    tokenized = tokenize_profile(profile=profile, vocabulary=vocabulary)
+
+    assert tokenized.fields[0].value_id == vocabulary.get_id(UNK_TOKEN)

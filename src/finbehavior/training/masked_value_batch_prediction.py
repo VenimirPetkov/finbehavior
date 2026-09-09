@@ -48,7 +48,19 @@ def predict_masked_value_batch(
         event_sequence_indices,
     ]
 
-    logits = prediction_head(event_representations)
+    target_key_ids = torch.stack(
+        tuple(
+            example.user.events[example.event_index]
+            .key_ids[example.field_index]
+            .to(device)
+            for example in examples
+        )
+    )
+
+    logits = prediction_head(
+        event_representations,
+        key_ids=target_key_ids,
+    )
 
     target_token_ids = torch.stack(
         tuple(example.target_token_id.to(device) for example in examples)

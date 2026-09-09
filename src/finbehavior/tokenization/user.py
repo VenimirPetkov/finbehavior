@@ -11,7 +11,11 @@ def tokenize_user_record(
     record: UserRecord,
     vocabulary: Vocabulary,
     numerical_bucketizer: QuantileBucketizer,
+    max_events: int | None = None,
 ) -> TokenizedUser:
+    if max_events is not None and max_events < 1:
+        raise ValueError("max_events must be at least 1")
+
     tokenized_profile = tokenize_profile(
         profile=record.profile,
         vocabulary=vocabulary,
@@ -24,7 +28,12 @@ def tokenize_user_record(
             events=(),
         )
 
-    latest_event_time = max(event.created for event in record.events)
+    chronological_events = sorted(record.events, key=lambda event: event.created)
+
+    if max_events is not None:
+        chronological_events = chronological_events[-max_events:]
+
+    latest_event_time = chronological_events[-1].created
 
     tokenized_events = tuple(
         tokenize_event(
@@ -33,7 +42,7 @@ def tokenize_user_record(
             vocabulary=vocabulary,
             numerical_bucketizer=numerical_bucketizer,
         )
-        for event in record.events
+        for event in chronological_events
     )
 
     return TokenizedUser(

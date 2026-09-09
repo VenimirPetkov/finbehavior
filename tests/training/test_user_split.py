@@ -6,6 +6,7 @@ from finbehavior.domain.profile import ProfileState
 from finbehavior.domain.record import UserRecord
 from finbehavior.training.user_split import (
     split_user_records,
+    split_user_records_three_way,
 )
 
 
@@ -90,4 +91,90 @@ def test_split_user_records_requires_at_least_two_users():
     ):
         split_user_records(
             records=(build_record(1),),
+        )
+
+
+def test_three_way_split_separates_all_users():
+    records = tuple(build_record(user_id) for user_id in range(20))
+
+    split = split_user_records_three_way(
+        records=records,
+        train_fraction=0.7,
+        validation_fraction=0.15,
+        seed=42,
+    )
+
+    assert len(split.train_records) == 14
+    assert len(split.validation_records) == 3
+    assert len(split.test_records) == 3
+
+    split_user_ids = (
+        {record.user_id for record in split.train_records},
+        {record.user_id for record in split.validation_records},
+        {record.user_id for record in split.test_records},
+    )
+
+    assert split_user_ids[0].isdisjoint(split_user_ids[1])
+    assert split_user_ids[0].isdisjoint(split_user_ids[2])
+    assert split_user_ids[1].isdisjoint(split_user_ids[2])
+    assert set.union(*split_user_ids) == set(range(20))
+
+
+def test_three_way_split_is_deterministic():
+    records = tuple(build_record(user_id) for user_id in range(12))
+
+    first = split_user_records_three_way(records=records, seed=123)
+    second = split_user_records_three_way(records=records, seed=123)
+
+    assert first == second
+
+
+def test_three_way_split_keeps_each_partition_non_empty():
+    records = tuple(build_record(user_id) for user_id in range(3))
+
+    split = split_user_records_three_way(
+        records=records,
+        train_fraction=0.8,
+        validation_fraction=0.1,
+    )
+
+    assert len(split.train_records) == 1
+    assert len(split.validation_records) == 1
+    assert len(split.test_records) == 1
+
+
+@pytest.mark.parametrize(
+    ("train_fraction", "validation_fraction", "message"),
+    (
+        (0.0, 0.1, "Train fraction must be between zero and one"),
+        (0.8, 0.0, "Validation fraction must be between zero and one"),
+        (
+            0.8,
+            0.2,
+            "Train and validation fractions must sum to less than one",
+        ),
+    ),
+)
+def test_three_way_split_rejects_invalid_fractions(
+    train_fraction: float,
+    validation_fraction: float,
+    message: str,
+):
+    records = tuple(build_record(user_id) for user_id in range(10))
+
+    with pytest.raises(ValueError, match=message):
+        split_user_records_three_way(
+            records=records,
+            train_fraction=train_fraction,
+            validation_fraction=validation_fraction,
+        )
+
+
+def test_three_way_split_requires_at_least_three_users():
+    with pytest.raises(
+        ValueError,
+        match="At least three user records are required",
+    ):
+        split_user_records_three_way(
+            records=(build_record(1), build_record(2)),
         )

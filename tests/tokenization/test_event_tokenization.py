@@ -1,5 +1,7 @@
 from datetime import datetime
 
+import pytest
+
 from finbehavior.data.reference.field_keys import (
     AMOUNT_FIELD,
 )
@@ -16,6 +18,7 @@ from finbehavior.tokenization.numerical import (
 )
 from finbehavior.tokenization.special_tokens import (
     EVT_TOKEN,
+    UNK_TOKEN,
 )
 from finbehavior.tokenization.vocabulary import (
     build_vocabulary,
@@ -103,3 +106,45 @@ def test_tokenize_transaction_event():
     assert len(tokenized.calendar_features) == 6
 
     assert tokenized.elapsed_time_feature > 0
+
+
+def test_cross_field_categorical_value_is_encoded_as_unknown():
+    event = Event(
+        created=datetime(2026, 8, 27, 14, 30),
+        source=EventSource.APP,
+        fields={
+            "screen": "opened",
+            "action": "opened",
+        },
+    )
+    vocabulary = build_vocabulary()
+
+    tokenized = tokenize_event(
+        event=event,
+        latest_event_time=event.created,
+        vocabulary=vocabulary,
+        numerical_bucketizer=QuantileBucketizer(number_of_buckets=4),
+    )
+
+    values_by_key = {
+        vocabulary.get_token(field.key_id): field.value_id for field in tokenized.fields
+    }
+
+    assert values_by_key["app.screen"] == vocabulary.get_id(UNK_TOKEN)
+    assert values_by_key["app.action"] == vocabulary.get_id("opened")
+
+
+def test_numerical_field_rejects_globally_known_string_value():
+    event = Event(
+        created=datetime(2026, 8, 27, 14, 30),
+        source=EventSource.TRANSACTION,
+        fields={"amount": "EUR"},
+    )
+
+    with pytest.raises(TypeError, match="must contain a number"):
+        tokenize_event(
+            event=event,
+            latest_event_time=event.created,
+            vocabulary=build_vocabulary(),
+            numerical_bucketizer=QuantileBucketizer(number_of_buckets=4),
+        )

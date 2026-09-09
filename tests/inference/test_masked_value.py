@@ -84,3 +84,34 @@ def test_decode_top_k_predictions_rejects_invalid_k() -> None:
             vocabulary=vocabulary,
             k=0,
         )
+
+
+def test_decode_top_k_predictions_omits_masked_domain_values() -> None:
+    vocabulary = Vocabulary()
+
+    vocabulary.add_many(
+        (
+            "alpha",
+            "beta",
+            "gamma",
+        )
+    )
+
+    logits = torch.full(
+        (len(vocabulary),),
+        float("-inf"),
+    )
+
+    logits[vocabulary.get_id("alpha")] = 3.0
+    logits[vocabulary.get_id("beta")] = 2.0
+
+    predictions = decode_top_k_predictions(
+        logits=logits,
+        vocabulary=vocabulary,
+        k=5,
+    )
+
+    assert tuple(prediction.token for prediction in predictions) == (
+        "alpha",
+        "beta",
+    )
