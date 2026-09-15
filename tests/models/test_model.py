@@ -250,3 +250,105 @@ def test_finbehavior_model_encodes_users_with_different_sequence_lengths(
         encoded_user_b,
         atol=1e-5,
     )
+
+
+def test_finbehavior_model_user_representation_depends_on_event_order(
+    transformer_block_factory,
+):
+    torch.manual_seed(0)
+
+    vocabulary = build_vocabulary()
+
+    field_embedding = FieldEmbedding(
+        vocabulary_size=len(vocabulary),
+    )
+
+    profile_embedding = ProfileEmbedding(
+        field_embedding=field_embedding,
+    )
+
+    event_embedding = EventEmbedding(
+        field_embedding=field_embedding,
+        temporal_projection=TemporalProjection(),
+    )
+
+    model = FinBehaviorModel(
+        user_sequence_embedding=UserSequenceEmbedding(
+            profile_embedding=profile_embedding,
+            history_embedding=HistoryEmbedding(
+                event_embedding=event_embedding,
+            ),
+        ),
+        encoder=TransformerEncoder(
+            blocks=(transformer_block_factory(),),
+        ),
+    )
+
+    profile = TensorizedProfile(
+        user_token_id=torch.tensor(
+            vocabulary.get_id(USR_TOKEN),
+            dtype=torch.long,
+        ),
+        key_ids=torch.empty(
+            0,
+            dtype=torch.long,
+        ),
+        value_ids=torch.empty(
+            0,
+            dtype=torch.long,
+        ),
+    )
+
+    def create_event(elapsed_time: float) -> TensorizedEvent:
+        return TensorizedEvent(
+            event_token_id=torch.tensor(
+                vocabulary.get_id(EVT_TOKEN),
+                dtype=torch.long,
+            ),
+            key_ids=torch.empty(
+                0,
+                dtype=torch.long,
+            ),
+            value_ids=torch.empty(
+                0,
+                dtype=torch.long,
+            ),
+            calendar_features=torch.zeros(
+                6,
+                dtype=torch.float32,
+            ),
+            elapsed_time_feature=torch.tensor(
+                elapsed_time,
+                dtype=torch.float32,
+            ),
+        )
+
+    first_event = create_event(1.0)
+    second_event = create_event(2.0)
+
+    forward_order = model(
+        TensorizedUser(
+            user_id=1,
+            profile=profile,
+            events=(
+                first_event,
+                second_event,
+            ),
+        )
+    )
+
+    reversed_order = model(
+        TensorizedUser(
+            user_id=1,
+            profile=profile,
+            events=(
+                second_event,
+                first_event,
+            ),
+        )
+    )
+
+    assert not torch.allclose(
+        forward_order,
+        reversed_order,
+    )

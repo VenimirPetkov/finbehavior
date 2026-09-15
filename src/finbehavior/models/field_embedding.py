@@ -20,6 +20,20 @@ class FieldEmbedding(nn.Module):
             embedding_dimension=embedding_dimension,
         )
 
+        self.embedding_dimension = embedding_dimension
+
+        self.pair_encoder = nn.Sequential(
+            nn.Linear(
+                embedding_dimension * 2,
+                embedding_dimension * 2,
+            ),
+            nn.GELU(),
+            nn.Linear(
+                embedding_dimension * 2,
+                embedding_dimension,
+            ),
+        )
+
     def forward(
         self,
         key_ids: torch.Tensor,
@@ -28,8 +42,12 @@ class FieldEmbedding(nn.Module):
         if key_ids.shape != value_ids.shape:
             raise ValueError("Key IDs and value IDs must have " "matching shapes")
 
-        key_vectors = self.token_embedding(key_ids)
+        key_value_pairs = torch.cat(
+            (
+                self.token_embedding(key_ids),
+                self.token_embedding(value_ids),
+            ),
+            dim=-1,
+        )
 
-        value_vectors = self.token_embedding(value_ids)
-
-        return key_vectors + value_vectors
+        return self.pair_encoder(key_value_pairs)

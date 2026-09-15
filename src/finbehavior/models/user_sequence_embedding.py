@@ -6,6 +6,7 @@ from finbehavior.tensorization.types import (
 )
 
 from .history_embedding import HistoryEmbedding
+from .positional_encoding import SinusoidalPositionalEncoding
 from .profile_embedding import ProfileEmbedding
 
 
@@ -19,6 +20,9 @@ class UserSequenceEmbedding(nn.Module):
 
         self.profile_embedding = profile_embedding
         self.history_embedding = history_embedding
+        self.positional_encoding = SinusoidalPositionalEncoding(
+            embedding_dimension=(profile_embedding.field_embedding.embedding_dimension),
+        )
 
     def forward(
         self,
@@ -28,10 +32,12 @@ class UserSequenceEmbedding(nn.Module):
 
         history_vectors = self.history_embedding(user.events)
 
-        return torch.cat(
+        sequence = torch.cat(
             (
                 profile_vector.unsqueeze(0),
                 history_vectors,
             ),
             dim=0,
         )
+
+        return self.positional_encoding(sequence)

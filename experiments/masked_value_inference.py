@@ -43,20 +43,22 @@ from finbehavior.training.masking import (
     mask_event_value,
 )
 from finbehavior.training.user_split import (
-    split_user_records,
+    split_user_records_three_way,
 )
 
 DATASET_USER_COUNT = 1024
 TRAIN_FRACTION = 0.8
+VALIDATION_FRACTION = 0.1
 
 DATASET_SEED = 42
-VALIDATION_EXAMPLE_SELECTION_SEED = 124
+TEST_EXAMPLE_SELECTION_SEED = 125
 
 EXAMPLES_PER_USER = 8
 DEMO_EXAMPLE_INDEX = 0
 TOP_K = 5
+MAX_EVENTS_PER_USER = 256
 
-BEST_CHECKPOINT_DIRECTORY = Path("checkpoints/generalization_best")
+BEST_CHECKPOINT_DIRECTORY = Path("checkpoints/generalization_v3_best")
 
 
 def get_device() -> torch.device:
@@ -76,6 +78,7 @@ def tensorize_records(
                     record=record,
                     vocabulary=vocabulary,
                     numerical_bucketizer=(bucketizer),
+                    max_events=MAX_EVENTS_PER_USER,
                 )
             ),
             device=device,
@@ -167,7 +170,7 @@ def main() -> None:
     print(f"Top-5 accuracy: " f"{checkpoint.top_5_accuracy * 100:.1f}%")
 
     print()
-    print("Rebuilding deterministic " "validation dataset...")
+    print("Rebuilding deterministic held-out test dataset...")
 
     synthetic_users = generate_dataset(
         number_of_users=DATASET_USER_COUNT,
@@ -186,14 +189,15 @@ def main() -> None:
 
     records = tuple(synthetic_user.record for synthetic_user in synthetic_users)
 
-    split = split_user_records(
+    split = split_user_records_three_way(
         records=records,
         train_fraction=TRAIN_FRACTION,
+        validation_fraction=VALIDATION_FRACTION,
         seed=DATASET_SEED,
     )
 
-    validation_users = tensorize_records(
-        records=split.validation_records,
+    test_users = tensorize_records(
+        records=split.test_records,
         vocabulary=checkpoint.vocabulary,
         bucketizer=checkpoint.bucketizer,
         device=device,
@@ -201,20 +205,20 @@ def main() -> None:
 
     mask_token_id = checkpoint.vocabulary.get_id(MASK_TOKEN)
 
-    validation_examples = build_sampled_examples(
-        users=validation_users,
+    test_examples = build_sampled_examples(
+        users=test_users,
         mask_token_id=mask_token_id,
         examples_per_user=(EXAMPLES_PER_USER),
-        seed=(VALIDATION_EXAMPLE_SELECTION_SEED),
+        seed=(TEST_EXAMPLE_SELECTION_SEED),
     )
 
-    if not validation_examples:
-        raise RuntimeError("No validation examples found")
+    if not test_examples:
+        raise RuntimeError("No test examples found")
 
-    if DEMO_EXAMPLE_INDEX >= len(validation_examples):
-        raise IndexError("Demo example index is outside " "the validation examples")
+    if DEMO_EXAMPLE_INDEX >= len(test_examples):
+        raise IndexError("Demo example index is outside the test examples")
 
-    example = validation_examples[DEMO_EXAMPLE_INDEX]
+    example = test_examples[DEMO_EXAMPLE_INDEX]
 
     vocabulary = checkpoint.vocabulary
 
@@ -239,7 +243,7 @@ def main() -> None:
     print("FinBehavior Inference Demo")
     print("==============================")
 
-    print(f"Validation user: " f"{example.user.user_id}")
+    print(f"Held-out test user: " f"{example.user.user_id}")
     print(f"Event index: " f"{example.event_index}")
     print(f"Event type: " f"{event_token}")
     print(f"Masked field: " f"{field_token}")
@@ -248,7 +252,7 @@ def main() -> None:
     print(f"True value: " f"{true_token}")
 
     print()
-    print(f"Top-{TOP_K} predictions:")
+    print(f"Top-{len(predictions)} allowed predictions " f"(requested up to {TOP_K}):")
 
     predicted_tokens = []
 

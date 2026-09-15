@@ -40,6 +40,16 @@ def decode_top_k_predictions(
     if k <= 0 or k > len(vocabulary):
         raise ValueError("k must be between 1 and " "vocabulary size")
 
+    eligible_token_count = torch.isfinite(logits).sum().item()
+
+    if eligible_token_count == 0:
+        raise ValueError("Logits do not contain any eligible tokens")
+
+    result_count = min(
+        k,
+        eligible_token_count,
+    )
+
     probabilities = torch.softmax(
         logits,
         dim=-1,
@@ -47,7 +57,7 @@ def decode_top_k_predictions(
 
     top_k = torch.topk(
         probabilities,
-        k=k,
+        k=result_count,
     )
 
     return tuple(

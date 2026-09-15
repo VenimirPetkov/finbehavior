@@ -39,6 +39,9 @@ from finbehavior.tensorization.user import (
 from finbehavior.tokenization.config.numerical import (
     DEFAULT_NUMERICAL_BUCKET_COUNT,
 )
+from finbehavior.tokenization.domains import (
+    build_event_value_id_domains,
+)
 from finbehavior.tokenization.fit import (
     fit_numerical_tokenization,
 )
@@ -66,15 +69,17 @@ from finbehavior.training.masking import (
     mask_event_value,
 )
 from finbehavior.training.user_split import (
-    split_user_records,
+    split_user_records_three_way,
 )
 
 DATASET_USER_COUNT = 1024
 TRAIN_FRACTION = 0.8
+VALIDATION_FRACTION = 0.1
 
 NUMBER_OF_BUCKETS = DEFAULT_NUMERICAL_BUCKET_COUNT
 EXAMPLES_PER_USER = 8
 BATCH_SIZE = 64
+MAX_EVENTS_PER_USER = 256
 TRAIN_BATCH_SHUFFLE_SEED = 321
 
 EPOCHS_PER_RUN = 5
@@ -83,11 +88,12 @@ LEARNING_RATE = 0.003
 DATASET_SEED = 42
 TRAIN_EXAMPLE_SELECTION_SEED = 123
 VALIDATION_EXAMPLE_SELECTION_SEED = 124
+TEST_EXAMPLE_SELECTION_SEED = 125
 TORCH_SEED = 0
 
-LATEST_CHECKPOINT_DIRECTORY = Path("checkpoints/generalization_latest")
+LATEST_CHECKPOINT_DIRECTORY = Path("checkpoints/generalization_v3_latest")
 
-BEST_CHECKPOINT_DIRECTORY = Path("checkpoints/generalization_best")
+BEST_CHECKPOINT_DIRECTORY = Path("checkpoints/generalization_v3_best")
 
 
 def get_device() -> torch.device:
@@ -117,6 +123,7 @@ def tensorize_records(
                     record=record,
                     vocabulary=vocabulary,
                     numerical_bucketizer=bucketizer,
+                    max_events=MAX_EVENTS_PER_USER,
                 )
             ),
             device=device,
@@ -196,14 +203,18 @@ def build_training_examples_for_epoch(
 def print_dataset_summary(
     train_user_count: int,
     validation_user_count: int,
+    test_user_count: int,
     train_example_count: int,
     validation_example_count: int,
+    test_example_count: int,
 ) -> None:
     print()
     print(f"Train users: " f"{train_user_count}")
     print(f"Validation users: " f"{validation_user_count}")
+    print(f"Test users: " f"{test_user_count}")
     print(f"Train examples per epoch: " f"{train_example_count}")
     print(f"Validation examples: " f"{validation_example_count}")
+    print(f"Test examples (held out): " f"{test_example_count}")
 
 
 def print_loss_header() -> None:
@@ -281,9 +292,10 @@ def run_experiment() -> None:
 
     records = tuple(synthetic_user.record for synthetic_user in synthetic_users)
 
-    split = split_user_records(
+    split = split_user_records_three_way(
         records=records,
         train_fraction=TRAIN_FRACTION,
+        validation_fraction=VALIDATION_FRACTION,
         seed=DATASET_SEED,
     )
 
@@ -344,6 +356,10 @@ def run_experiment() -> None:
 
         prediction_head = MaskedValuePredictionHead(
             vocabulary_size=len(vocabulary),
+            allowed_token_ids_by_key_id=build_event_value_id_domains(
+                vocabulary=vocabulary,
+                bucketizer=bucketizer,
+            ),
         ).to(device)
 
         start_epoch = 0
@@ -379,6 +395,15 @@ def run_experiment() -> None:
         device=device,
     )
 
+    print("Tensorizing held-out test users...")
+
+    test_users = tensorize_records(
+        records=split.test_records,
+        vocabulary=vocabulary,
+        bucketizer=bucketizer,
+        device=device,
+    )
+
     mask_token_id = vocabulary.get_id(MASK_TOKEN)
 
     print()
@@ -391,6 +416,13 @@ def run_experiment() -> None:
         seed=(VALIDATION_EXAMPLE_SELECTION_SEED),
     )
 
+    test_examples = build_sampled_examples(
+        users=test_users,
+        mask_token_id=mask_token_id,
+        examples_per_user=(EXAMPLES_PER_USER),
+        seed=(TEST_EXAMPLE_SELECTION_SEED),
+    )
+
     current_train_examples = build_training_examples_for_epoch(
         users=train_users,
         mask_token_id=mask_token_id,
@@ -401,13 +433,19 @@ def run_experiment() -> None:
 
     validation_user_ids = {example.user.user_id for example in validation_examples}
 
+    test_user_ids = {example.user.user_id for example in test_examples}
+
     assert train_user_ids.isdisjoint(validation_user_ids)
+    assert train_user_ids.isdisjoint(test_user_ids)
+    assert validation_user_ids.isdisjoint(test_user_ids)
 
     print_dataset_summary(
         train_user_count=len(split.train_records),
         validation_user_count=len(split.validation_records),
+        test_user_count=len(split.test_records),
         train_example_count=len(current_train_examples),
         validation_example_count=len(validation_examples),
+        test_example_count=len(test_examples),
     )
 
     print()
@@ -577,6 +615,29 @@ def run_experiment() -> None:
     print(f"Best validation loss: " f"{best_validation_loss:.4f}")
     print(f"Latest checkpoint: " f"{LATEST_CHECKPOINT_DIRECTORY}")
     print(f"Best checkpoint: " f"{BEST_CHECKPOINT_DIRECTORY}")
+
+    print()
+    print(
+        "Loading the validation-selected best checkpoint for final test evaluation..."
+    )
+
+    best_checkpoint = load_checkpoint(
+        directory=BEST_CHECKPOINT_DIRECTORY,
+        device=device,
+    )
+
+    test_metrics = evaluate_masked_value_metrics(
+        model=best_checkpoint.model,
+        prediction_head=best_checkpoint.prediction_head,
+        examples=test_examples,
+        batch_size=BATCH_SIZE,
+    )
+
+    print()
+    print("Held-out test metrics (not used for model selection)")
+    print(f"Loss: {test_metrics.loss:.4f}")
+    print(f"Top-1 accuracy: {test_metrics.top_1_accuracy * 100:.1f}%")
+    print(f"Top-5 accuracy: {test_metrics.top_5_accuracy * 100:.1f}%")
 
     assert len(train_losses) == (EPOCHS_PER_RUN + 1)
 

@@ -153,3 +153,83 @@ def test_user_sequence_embedding_supports_profile_only_user():
         1,
         DEFAULT_EMBEDDING_DIMENSION,
     )
+
+
+def test_user_sequence_embedding_encodes_event_order():
+    torch.manual_seed(0)
+
+    vocabulary, user_sequence_embedding = build_user_sequence_embedding()
+
+    profile = TensorizedProfile(
+        user_token_id=torch.tensor(
+            vocabulary.get_id(USR_TOKEN),
+            dtype=torch.long,
+        ),
+        key_ids=torch.empty(
+            0,
+            dtype=torch.long,
+        ),
+        value_ids=torch.empty(
+            0,
+            dtype=torch.long,
+        ),
+    )
+
+    def create_event(elapsed_time: float) -> TensorizedEvent:
+        return TensorizedEvent(
+            event_token_id=torch.tensor(
+                vocabulary.get_id(EVT_TOKEN),
+                dtype=torch.long,
+            ),
+            key_ids=torch.empty(
+                0,
+                dtype=torch.long,
+            ),
+            value_ids=torch.empty(
+                0,
+                dtype=torch.long,
+            ),
+            calendar_features=torch.zeros(
+                CALENDAR_FEATURE_DIMENSION,
+                dtype=torch.float32,
+            ),
+            elapsed_time_feature=torch.tensor(
+                elapsed_time,
+                dtype=torch.float32,
+            ),
+        )
+
+    first_event = create_event(1.0)
+    second_event = create_event(2.0)
+
+    forward_sequence = user_sequence_embedding(
+        TensorizedUser(
+            user_id=1,
+            profile=profile,
+            events=(
+                first_event,
+                second_event,
+            ),
+        )
+    )
+
+    reversed_sequence = user_sequence_embedding(
+        TensorizedUser(
+            user_id=1,
+            profile=profile,
+            events=(
+                second_event,
+                first_event,
+            ),
+        )
+    )
+
+    assert not torch.allclose(
+        forward_sequence[1],
+        reversed_sequence[2],
+    )
+
+    assert not torch.allclose(
+        forward_sequence[2],
+        reversed_sequence[1],
+    )

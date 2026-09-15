@@ -9,6 +9,8 @@ from finbehavior.models.masked_value_prediction_head import (
     MaskedValuePredictionHead,
 )
 from finbehavior.persistence.checkpoint import (
+    CHECKPOINT_VERSION,
+    MODEL_STATE_FILENAME,
     checkpoint_exists,
     load_checkpoint,
     save_checkpoint,
@@ -57,6 +59,12 @@ def test_checkpoint_round_trip(
 
     prediction_head = MaskedValuePredictionHead(
         vocabulary_size=len(vocabulary),
+        allowed_token_ids_by_key_id={
+            vocabulary.get_id("amount"): tuple(
+                vocabulary.get_id(token)
+                for token in bucketizer.get_bucket_tokens("amount")
+            ),
+        },
     )
 
     parameters = list(model.parameters()) + list(prediction_head.parameters())
@@ -95,6 +103,21 @@ def test_checkpoint_round_trip(
         best_validation_loss=2.4135,
     )
 
+    assert checkpoint_exists(checkpoint_directory)
+
+    saved_state = torch.load(
+        checkpoint_directory / MODEL_STATE_FILENAME,
+        map_location="cpu",
+        weights_only=True,
+    )
+
+    assert saved_state["version"] == CHECKPOINT_VERSION == 3
+    assert saved_state["tokenizer_state"]["vocabulary"] == list(vocabulary.get_tokens())
+    assert not tuple(checkpoint_directory.glob("*.tmp"))
+
+    # model.pt is the atomic, authoritative restore unit. The JSON sidecar is
+    # a human-readable export and must not be required for recovery.
+    (checkpoint_directory / "tokenizer.json").unlink()
     assert checkpoint_exists(checkpoint_directory)
 
     loaded = load_checkpoint(
@@ -138,6 +161,11 @@ def test_checkpoint_round_trip(
             original_head_state[name],
             loaded_head_state[name],
         )
+
+    assert torch.equal(
+        prediction_head.allowed_value_mask,
+        loaded.prediction_head.allowed_value_mask,
+    )
 
     loaded_optimizer_state = loaded.optimizer_state_dict
 

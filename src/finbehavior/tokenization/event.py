@@ -5,9 +5,10 @@ from finbehavior.data.reference.field_keys import (
 )
 from finbehavior.domain.event import Event
 
+from .categorical import get_categorical_value_tokens
 from .keys import get_event_key_token
 from .numerical import QuantileBucketizer
-from .special_tokens import EVT_TOKEN
+from .special_tokens import EVT_TOKEN, UNK_TOKEN
 from .temporal import (
     get_calendar_features,
     seconds_to_latest_event,
@@ -93,7 +94,15 @@ def _encode_value(
     if isinstance(value, bool):
         raise TypeError("Boolean event values are not supported yet")
 
-    if isinstance(value, (int, float)):
+    try:
+        allowed_values = get_categorical_value_tokens(key_token)
+    except KeyError:
+        allowed_values = None
+
+    if allowed_values is None:
+        if not isinstance(value, (int, float)):
+            raise TypeError(f"Numerical field '{key_token}' must contain a number")
+
         bucket_token = numerical_bucketizer.transform(
             key_token,
             value,
@@ -101,7 +110,10 @@ def _encode_value(
 
         return vocabulary.get_id(bucket_token)
 
-    if isinstance(value, str):
-        return vocabulary.encode(value)
+    if not isinstance(value, str):
+        raise TypeError(f"Categorical field '{key_token}' must contain a string")
 
-    raise TypeError("Unsupported event value type: " f"{type(value).__name__}")
+    if value not in allowed_values:
+        return vocabulary.get_id(UNK_TOKEN)
+
+    return vocabulary.encode(value)

@@ -4,10 +4,11 @@ from finbehavior.data.reference.field_keys import (
 )
 from finbehavior.domain.profile import ProfileState
 
+from .categorical import get_categorical_value_tokens
 from .profile_values import (
     get_balance_quantile_token,
 )
-from .special_tokens import USR_TOKEN
+from .special_tokens import UNK_TOKEN, USR_TOKEN
 from .types import (
     TokenizedField,
     TokenizedProfile,
@@ -58,7 +59,10 @@ def _tokenize_profile_field(
                 f"Profile field '{field_name}' " "must contain a string value"
             )
 
-        value_id = vocabulary.encode(value)
+        if value not in get_categorical_value_tokens(field_name):
+            value_id = vocabulary.get_id(UNK_TOKEN)
+        else:
+            value_id = vocabulary.encode(value)
 
     return TokenizedField(
         key_id=key_id,
